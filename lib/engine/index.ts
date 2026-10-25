@@ -14,9 +14,18 @@ import { catchmentRadiusKm, distanceKm, overlapBand, overlapBetweenPins, roundKm
 import { InvariantError, checkInvariants } from "./invariants";
 import { isValidPin, normaliseName } from "./normalise";
 import { applyOverrides } from "./overrides";
-import { computePayback, conditionsFromFlags, plannedOpenDate, realisticMonths } from "./plan";
-import { addDaysISO, getPin, pinLabel, todayIST } from "./reference";
+import {
+  buildNextSteps,
+  buildTimeline,
+  buildTrainingPlan,
+  computePayback,
+  conditionsFromFlags,
+  plannedOpenDate,
+  realisticMonths,
+} from "./plan";
+import { addDaysISO, formatDate, getPin, pinLabel, todayIST } from "./reference";
 import { scoreApplication, withDestinationPriority, type ScoreResult } from "./score";
+import { mergeOverrides, whatWouldChange } from "./simulate";
 import {
   STATUSES,
   type Application,
@@ -48,6 +57,8 @@ export interface EngineOptions {
   readings?: NoteReading[] | Record<string, NoteReading>;
   /** Throw if a placement rule is broken. Defaults to true outside production. */
   throwOnViolation?: boolean;
+  /** Work out "what would change it" by re-running the engine for each applicant who isn't moving forward. Default true. */
+  simulate?: boolean;
 }
 
 export { DEFAULT_ASSUMPTIONS };
@@ -288,6 +299,15 @@ export function runEngine(
       });
     }
 
+    if (redirected && placement) {
+      flags.push({
+        code: "SITE_AT_NEW_PIN",
+        severity: "condition",
+        field: "pin",
+        message: `Needs a site at the new pin ${pinLabel(placement.pin)}; the slot is held for ${A.conditionDays.site} days while one is found.`,
+      });
+    }
+
     // Status
     let status: Status;
     let allocation: Decision["allocation"];
@@ -327,12 +347,49 @@ export function runEngine(
           ? "medium"
           : "high";
 
+    // Onboarding: next steps and the readiness plan for those moving forward; an indicative training plan
+    // (no dates) for waitlisted applicants, so "how would they be trained?" always has an answer.
+    const conditions = moving ? conditionsFromFlags(flags, today, A) : undefined;
+    const openDate = rFinal ? plannedOpenDate(today, app.targetLaunchMonths, rFinal.months) : null;
+    let nextSteps: Decision["nextSteps"];
+    let readinessPlan: Decision["readinessPlan"];
+    if (moving && allocation && openDate) {
+      const training = buildTrainingPlan({
+        pin: allocation.pin, language: app.language, experienceYears: app.experienceYears,
+        businessCategory: c.reading.businessCategory, stores: input.existingStores, openDate,
+      });
+      readinessPlan = {
+        indicative: false,
+        timeline: buildTimeline({ today, open: openDate, floor: app.floor, conditions: conditions ?? [], partnerTrainingDays: training.totalDays }),
+        training,
+      };
+      nextSteps = buildNextSteps({
+        today,
+        conditions: conditions ?? [],
+        shortlist: status === "REDIRECT" ? shortlistFor(app.id, allocation.territoryId, allocation.pin) : null,
+        hasSite: c.hasSite,
+        slotReservedUntil: allocation.slotReservedUntil ? formatDate(allocation.slotReservedUntil) : undefined,
+        siteLabel: pinLabel(allocation.pin),
+      });
+    } else if (status === "WAITLIST" && eligible && isValidPin(app.pin)) {
+      readinessPlan = {
+        indicative: true,
+        timeline: [],
+        training: buildTrainingPlan({
+          pin: app.pin as string, language: app.language, experienceYears: app.experienceYears,
+          businessCategory: c.reading.businessCategory, stores: input.existingStores, openDate: null,
+        }),
+      };
+    }
+
     return {
       id: app.id,
       name: app.name,
       city: app.city,
       pin: app.pin,
       tier: c.tier,
+      nextSteps,
+      readinessPlan,
       status,
       score: total,
       effectiveScore,
@@ -344,12 +401,12 @@ export function runEngine(
       cannibalisation,
       payback,
       waitlistRank: status === "WAITLIST" ? rankByApp.get(app.id) : undefined,
-      conditions: moving ? conditionsFromFlags(flags, today, A) : undefined,
+      conditions,
       questionsForApplicant:
         status === "HOLD" ? flags.filter((f) => f.severity === "blocker" && f.question).map((f) => f.question as string) : undefined,
       confidence,
       realisticMonths: rFinal ? rFinal.months : null,
-      plannedOpenDate: rFinal ? plannedOpenDate(today, app.targetLaunchMonths, rFinal.months) : null,
+      plannedOpenDate: openDate,
       businessCategory: c.reading.businessCategory as BusinessCategory,
       signals: c.reading.signals,
       withdrawn: c.withdrawn,
@@ -386,7 +443,23 @@ export function runEngine(
     if (comps.length) d.competitors = comps;
   }
 
-  // ---- 6. Explanations
+  // ---- 6. "What would change it": re-run the engine with the obvious fix for those not moving forward
+  if (options.simulate !== false) {
+    const base = Object.fromEntries(drafts.map((d) => [d.id, { status: d.status, score: d.score, pin: d.allocation?.pin ?? null }]));
+    const simulate = {
+      run: (delta: Overrides) =>
+        runEngine(rawInput, A, mergeOverrides(overrides, delta), { ...options, today, simulate: false, throwOnViolation: options.throwOnViolation }),
+      base,
+      A,
+      altPin: (id: string) => altPinFor(id),
+    };
+    for (const d of drafts) {
+      if (d.status === "APPROVED" || d.status === "CONDITIONAL" || d.status === "REDIRECT") continue;
+      d.whatWouldChange = whatWouldChange(d, ctxById.get(d.id)!.app, simulate);
+    }
+  }
+
+  // ---- 7. Explanations
   const decisions: Decision[] = drafts.map((d) => {
     const c = ctxById.get(d.id)!;
     const gap = c.score?.rejected ? Math.max(0, A.investmentNeedLakh[c.tier ?? 2] * 0.6 - (c.app.investmentLakh ?? 0)) : undefined;
@@ -396,7 +469,37 @@ export function runEngine(
   decisions.sort((a, b) => numeric(a.id, b.id));
   const decisionById: Record<string, Decision> = Object.fromEntries(decisions.map((d) => [d.id, d]));
 
-  // ---- 7. Territories, waitlists and unfilled-slot insights
+  /** Pins in the same city that are still free and legal, nearest to the applicant's own pin first. */
+  function freePins(id: string): { pin: string; territoryId: string; km: number }[] {
+    const c = ctxById.get(id)!;
+    if (!c.app.pin || !isValidPin(c.app.pin)) return [];
+    const out: { pin: string; territoryId: string; km: number }[] = [];
+    for (const t of input.territories) {
+      if (t.city !== c.app.city || finalState.slotsLeft(t) <= 0) continue;
+      for (const pin of t.pins) {
+        if (pin === c.app.pin || whyPinUnavailable(pin, c.radiusKm, finalState) !== null) continue;
+        out.push({ pin, territoryId: t.id, km: distanceKm(c.app.pin, pin) ?? Infinity });
+      }
+    }
+    return out.sort((a, b) => a.km - b.km || a.pin.localeCompare(b.pin));
+  }
+  function altPinFor(id: string): string | null {
+    return freePins(id)[0]?.pin ?? null;
+  }
+
+  /** The allocated pin plus up to two other free pins in the same territory where a site could be found. */
+  function shortlistFor(id: string, territoryId: string, allocatedPin: string): string[] {
+    const t = input.territories.find((x) => x.id === territoryId);
+    const c = ctxById.get(id)!;
+    if (!t) return [allocatedPin];
+    const without = buildState(input.existingStores, input.territories, A, alloc.placements.filter((p) => p.applicationId !== id), personOf, radiusOf);
+    const others = t.pins
+      .filter((p) => p !== allocatedPin && whyPinUnavailable(p, c.radiusKm, without) === null)
+      .sort((a, b) => (distanceKm(allocatedPin, a) ?? Infinity) - (distanceKm(allocatedPin, b) ?? Infinity) || a.localeCompare(b));
+    return [allocatedPin, ...others.slice(0, 2)];
+  }
+
+  // ---- 8. Territories, waitlists and unfilled-slot insights
   const territories: TerritoryResult[] = input.territories.map((t) => {
     const placedHere = finalState.placedIn(t.id).map((p) => p.applicationId);
     const free = slotsOf(t) - placedHere.length;
@@ -446,7 +549,7 @@ export function runEngine(
     return { territoryId: t.id, freeSlots: free, reasons, viablePins: viable, blockedPins: blocked };
   }
 
-  // ---- 8. Placement rules, re-verified independently
+  // ---- 9. Placement rules, re-verified independently
   const invariants = checkInvariants({
     allocations: alloc.placements.map((p) => ({ applicationId: p.applicationId, territoryId: p.territoryId, pin: p.pin })),
     territories: input.territories,
