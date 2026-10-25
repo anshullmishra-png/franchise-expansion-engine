@@ -1,5 +1,6 @@
 "use client";
 
+import { MapPinned } from "lucide-react";
 import { AssumptionsDrawer } from "@/components/assumptions-drawer";
 import { DrawerRoot } from "@/components/applicant-drawer";
 import { Banners } from "@/components/banners";
@@ -67,6 +68,19 @@ function Shell() {
           ) : (
             <EmptyState />
           )}
+          <footer className="mt-10 border-t border-ink-200 bg-white">
+            <div className="flex flex-col items-start justify-between gap-3 px-4 py-6 text-[13px] text-ink-500 sm:flex-row sm:items-center lg:px-6">
+              <div className="flex items-center gap-2">
+                <span className="grid size-6 place-items-center rounded-md bg-teal-700 text-white" aria-hidden>
+                  <MapPinned className="size-3.5" />
+                </span>
+                <span className="font-semibold text-ink-700">Franchise Expansion Engine</span>
+                <span className="text-ink-300">·</span>
+                <span>Rules decide, AI explains</span>
+              </div>
+              <p>Coordinates are pin-code centres, so distances are estimates. Your data stays in this browser.</p>
+            </div>
+          </footer>
         </main>
         <ChatPanel />
       </div>

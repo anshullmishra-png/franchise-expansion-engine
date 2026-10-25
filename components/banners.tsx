@@ -6,7 +6,7 @@ import { useStore } from "@/lib/state/store";
 
 function Banner({ tone, children, action, onClose }: { tone: "info" | "warn" | "error"; children: React.ReactNode; action?: React.ReactNode; onClose?: () => void }) {
   const cls =
-    tone === "error" ? "border-rejected/40 bg-rejected-soft text-rejected-ink" : tone === "warn" ? "border-waitlist/50 bg-waitlist-soft text-waitlist-ink" : "border-redirect/30 bg-redirect-soft text-redirect-ink";
+    tone === "error" ? "border-rejected/40 bg-rejected-soft text-rejected-ink" : tone === "warn" ? "border-waitlist/50 bg-waitlist-soft text-waitlist-ink" : "border-teal-700/20 bg-teal-50 text-teal-800";
   const Icon = tone === "info" ? Info : AlertTriangle;
   return (
     <div role={tone === "error" ? "alert" : "status"} className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${cls}`}>

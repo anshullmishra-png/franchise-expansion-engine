@@ -4,7 +4,27 @@
 
 <!-- PASTE YOUR UI PROMPT BELOW THIS LINE. Replace this comment. -->
 
-_(not yet provided — until it is, use a clean, professional ops-tool style with shadcn/ui defaults and the status colours below)_
+Provided by Anshull as a design brief for a "contact page" (AtlasForms, a forms tool). It is a visual system, not a page spec, so this app borrows the system and keeps its own content. The essentials, with the exact values:
+
+**Signature:** a wide, calm, cartographic LEFT panel beside a narrow DARK form rail, inside one `rounded-2xl` bordered white card (`lg:grid-cols-[1.65fr_1fr]`). Mood: calm, trustworthy, modern, local, human; never a cold generic SaaS form.
+
+**Palette (one accent only, teal):** paper `#f8fafc` · teal 700 `#0f766e` (primary), 800 `#115e59`, 600 `#0d9488`, 500 `#14b8a6`, 50 `#f0fdfa`, 100 `#ccfbf1` · ink 950 `#0b1220`, 900 `#0f172a`, 800 `#1e293b`, 700 `#334155`, 600 `#475569`, 500 `#64748b`, 400 `#94a3b8`, 300 `#cbd5e1`, 200 `#e2e8f0`, 100 `#f1f5f9`. No second accent hue, no loud gradients.
+
+**Shadows:** card `0 1px 2px rgba(15,23,42,.04), 0 8px 24px -12px rgba(15,23,42,.12)` · pop `0 12px 40px -8px rgba(15,23,42,.22)` · rail `0 24px 60px -24px rgba(15,94,89,.45)` (teal button glow).
+
+**Type:** Inter only (400-900). Display headline `font-extrabold tracking-tight leading-[1.05]` at `text-4xl` to `sm:text-5xl`. Eyebrows and small labels are uppercase with `.tracky` (letter-spacing `.14em`), 11-13px, bold. Wordmark: first words ink-900, last word teal-700, `font-extrabold tracking-tight`.
+
+**Shapes:** `rounded-lg` fields, buttons, tiles · `rounded-xl` callouts and inline cards · `rounded-2xl` main card · `rounded-full` eyebrow and label pills. Hairline `ink-200` borders everywhere.
+
+**CSS-only cartographic map texture (`.map-grid`):** background `#e6f1ef` plus four layered linear-gradient grid lines (two fine `rgba(15,118,110,.06)` at 28px, two heavier `rgba(15,118,110,.10)` at 140px), organic `.blob` land masses (`border-radius: 42% 58% 55% 45% / 48% 50% 50% 52%`, teal at .07-.10 alpha), rounded white `.road` strips rotated a few degrees, a white label pill, and a teal pin with a white callout card. Never a real map provider or logo in this decorative texture.
+
+**Dark rail fields (`.field`):** on ink-950, 1px `white/10` border, `white/[.04]` fill, placeholder ink-400, leading icons. On focus: no outline, border teal-500, fill ink-950, ring `0 0 0 4px rgba(20,184,166,.18)`. Primary button teal-700 with the rail glow; on hover lifts `translateY(-1px)` with `0 10px 24px -8px rgba(20,184,166,.6)`.
+
+**Nav:** sticky, `bg-paper/85 backdrop-blur-md`, hairline bottom border, teal logo tile with a `map-pinned` icon, links with a teal underline that grows from 0 to 100% on hover. Light footer closes the page. Lucide icons.
+
+**Copy:** warm, human, plain; no em-dashes.
+
+**How the app applies it:** the chat is the dark rail; the empty state is the map-beside-rail card (upload on the map, how-it-works on the rail); the top bar is the sticky blurred nav; cards, tiles and tables use the card shadow and hairlines; teal is chrome and focus only. The six status colours stay as defined in Part B (they are data, not branding).
 
 <!-- END OF UI PROMPT -->
 

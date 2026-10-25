@@ -43,7 +43,7 @@ export function ChangeLogTab() {
   return (
     <ol className="space-y-3">
       {s.log.map((e) => (
-        <li key={e.id} className={`rounded-xl border bg-card p-4 ${e.undone ? "opacity-60" : ""}`}>
+        <li key={e.id} className={`rounded-2xl border border-ink-200 bg-card p-4 shadow-card ${e.undone ? "opacity-60" : ""}`}>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand">{e.source}</span>
             <time className="text-xs text-muted-foreground" dateTime={e.at}>{new Date(e.at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
@@ -78,7 +78,7 @@ export function ChangeLogTab() {
               </tbody>
             </table>
           </div>
-          <h4 className="mt-3 mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Knock-on effects</h4>
+          <h4 className="mt-3 mb-1 text-xs font-semibold tracky text-muted-foreground uppercase">Knock-on effects</h4>
           <StatusDiffList diffs={e.statusDiffs} />
         </li>
       ))}

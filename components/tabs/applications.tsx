@@ -103,7 +103,7 @@ export function ApplicationsTab() {
         <span className="ml-auto text-xs text-muted-foreground">{rows.length} of {r.decisions.length}</span>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border bg-card">
+      <div className="overflow-x-auto rounded-2xl border border-ink-200 bg-card shadow-card">
         <Table className="min-w-[60rem]">
           <TableHeader>
             <TableRow>

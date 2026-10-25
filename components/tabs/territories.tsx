@@ -36,7 +36,7 @@ export function TerritoryCard({ t, highlight }: { t: TerritoryResult; highlight?
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div>
-            <h4 className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Allocated stores</h4>
+            <h4 className="mb-1 text-xs font-semibold tracky text-muted-foreground uppercase">Allocated stores</h4>
             {t.allocated.length === 0 ? (
               <p className="text-muted-foreground">None.</p>
             ) : (
@@ -57,7 +57,7 @@ export function TerritoryCard({ t, highlight }: { t: TerritoryResult; highlight?
           </div>
 
           <div>
-            <h4 className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Waitlist (in order)</h4>
+            <h4 className="mb-1 text-xs font-semibold tracky text-muted-foreground uppercase">Waitlist (in order)</h4>
             {t.waitlist.length === 0 ? (
               <p className="text-muted-foreground">Nobody waiting.</p>
             ) : (
@@ -76,7 +76,7 @@ export function TerritoryCard({ t, highlight }: { t: TerritoryResult; highlight?
           </div>
 
           <div>
-            <h4 className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Viable pins left</h4>
+            <h4 className="mb-1 text-xs font-semibold tracky text-muted-foreground uppercase">Viable pins left</h4>
             <p className={t.viablePins.length ? "" : "text-muted-foreground"}>
               {t.viablePins.length ? t.viablePins.map(pinLabel).join(", ") : "None: every listed pin is taken or too close to another store."}
             </p>
@@ -93,7 +93,7 @@ export function TerritoryCard({ t, highlight }: { t: TerritoryResult; highlight?
 
           {flags.length || infoFlags.length ? (
             <div>
-              <h4 className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Flags</h4>
+              <h4 className="mb-1 text-xs font-semibold tracky text-muted-foreground uppercase">Flags</h4>
               <ul className="space-y-0.5">
                 {flags.map((f, i) => (
                   <li key={`w${i}`} className="flex gap-2"><span className="mt-1.5 size-2 shrink-0 rounded-full bg-waitlist" aria-hidden /><IdText text={f.message} /></li>

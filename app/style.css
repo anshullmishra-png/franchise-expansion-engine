@@ -1,0 +1,125 @@
+/* The visual system from docs/UI_PROMPT.md Part A: calm paper canvas, slate ink ramp, ONE teal accent,
+   a cartographic texture drawn in CSS, and a dark form rail with dark inset fields. */
+
+@theme inline {
+  --color-paper: #f8fafc;
+
+  --color-teal-50: #f0fdfa;
+  --color-teal-100: #ccfbf1;
+  --color-teal-400: #2dd4bf;
+  --color-teal-500: #14b8a6;
+  --color-teal-600: #0d9488;
+  --color-teal-700: #0f766e;
+  --color-teal-800: #115e59;
+
+  --color-ink-100: #f1f5f9;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+  --color-ink-950: #0b1220;
+
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+  --shadow-pop: 0 12px 40px -8px rgba(15, 23, 42, 0.22);
+  --shadow-rail: 0 24px 60px -24px rgba(15, 94, 89, 0.45);
+}
+
+.tracky {
+  letter-spacing: 0.14em;
+}
+
+/* Nav links: a teal underline grows from nothing on hover. */
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  height: 2px;
+  width: 0;
+  background: #0f766e;
+  transition: width 0.2s ease;
+}
+.nav-link:hover::after,
+.nav-link[aria-current="page"]::after {
+  width: 100%;
+}
+
+/* Dark inset fields on the ink-950 rail, with a teal focus ring. */
+.field {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field::placeholder {
+  color: #94a3b8;
+}
+.field:focus {
+  outline: none;
+  border-color: #14b8a6;
+  background: #0b1220;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.18);
+}
+
+/* Primary teal button with the rail glow; it lifts on hover. */
+.submit-btn {
+  background: #0f766e;
+  color: #fff;
+  box-shadow: 0 24px 60px -24px rgba(15, 94, 89, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -8px rgba(20, 184, 166, 0.6);
+}
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The cartographic canvas: grid lines, land masses and roads, all CSS. No map tiles, no provider. */
+.map-grid {
+  position: relative;
+  background-color: #e6f1ef;
+  background-image:
+    linear-gradient(rgba(15, 118, 110, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 118, 110, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(15, 118, 110, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 118, 110, 0.1) 1px, transparent 1px);
+  background-size: 28px 28px, 28px 28px, 140px 140px, 140px 140px;
+}
+.map-grid .blob {
+  position: absolute;
+  border-radius: 42% 58% 55% 45% / 48% 50% 50% 52%;
+  background: rgba(15, 118, 110, 0.08);
+}
+.map-grid .road,
+.map-grid .road-soft {
+  position: absolute;
+  border-radius: 999px;
+}
+.map-grid .road {
+  background: #fff;
+  opacity: 0.9;
+}
+.map-grid .road-soft {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-link::after,
+  .submit-btn,
+  .field {
+    transition: none;
+  }
+  .submit-btn:hover:not(:disabled) {
+    transform: none;
+  }
+}

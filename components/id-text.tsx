@@ -28,7 +28,7 @@ export function IdText({ text, className }: { text: string; className?: string }
             key={i}
             type="button"
             onClick={() => (p.id.startsWith("APP") ? openApplicant(p.id) : openTerritory(p.id))}
-            className="rounded-sm font-medium text-brand underline decoration-dotted underline-offset-2 hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-sm font-medium text-brand underline decoration-dotted underline-offset-2 hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring in-[.dark-rail]:text-teal-400"
           >
             {p.id}
           </button>

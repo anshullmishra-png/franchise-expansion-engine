@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Download, FileDown, FileSpreadsheet, FlaskConical, RotateCcw, SlidersHorizontal, Upload } from "lucide-react";
+import { ArrowRight, Download, FileDown, FileSpreadsheet, FlaskConical, MapPinned, RotateCcw, SlidersHorizontal, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RulesBadge } from "@/components/rules-badge";
@@ -34,25 +34,44 @@ export function TopBar() {
     }
   }
 
+  const outline = "border-ink-200 bg-white text-ink-700 shadow-card hover:bg-teal-50 hover:text-ink-900";
   return (
-    <header className="border-b bg-background">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
+    <header className="sticky top-0 z-40 border-b border-ink-200/80 bg-paper/85 backdrop-blur-md">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 lg:px-6">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand text-sm font-bold text-white" aria-hidden>
-            FE
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-teal-700 text-white shadow-card" aria-hidden>
+            <MapPinned className="size-5" />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-base leading-tight font-semibold">Franchise Expansion Engine</h1>
-            <p className="truncate text-xs text-muted-foreground">{s.fileName ? s.fileName : "Rules decide, AI explains"}</p>
+            <h1 className="truncate text-[17px] leading-tight font-extrabold tracking-tight text-ink-900">
+              Franchise Expansion <span className="text-teal-700">Engine</span>
+            </h1>
+            <p className="truncate text-xs text-ink-500">{s.fileName ? s.fileName : "Rules decide, AI explains"}</p>
           </div>
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
-          <Button variant="outline" size="sm" onClick={() => void s.loadSample()} disabled={s.busy}>
+          <Button variant="outline" size="sm" className={outline} onClick={() => void s.loadSample()} disabled={s.busy}>
             <FlaskConical /> <span className="max-sm:sr-only">Load sample data</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={s.busy}>
-            <Upload /> <span className="max-sm:sr-only">Upload Excel</span>
+          <a
+            href="/Case1_Franchise_Test_Data_Format.xlsx"
+            download
+            className={`inline-flex h-7 items-center gap-1 rounded-[min(var(--radius-md),12px)] border px-2.5 text-[0.8rem] font-medium ${outline}`}
+          >
+            <FileDown className="size-3.5" /> <span className="max-sm:sr-only">Download template</span>
+          </a>
+          <Button variant="outline" size="sm" className={outline} onClick={() => s.setAssumptionsOpen(true)}>
+            <SlidersHorizontal /> <span className="max-sm:sr-only">Assumptions</span>
+          </Button>
+          <Button variant="outline" size="sm" className={outline} onClick={() => void doExport()} disabled={!hasData || exporting}>
+            {exporting ? <FileSpreadsheet className="animate-pulse" /> : <Download />} <span className="max-sm:sr-only">{exporting ? "Preparing…" : "Export (.xlsx)"}</span>
+          </Button>
+          <Button variant="ghost" size="sm" className="text-ink-600" onClick={() => setConfirmOpen(true)} disabled={!s.input && s.log.length === 0}>
+            <RotateCcw /> <span className="max-sm:sr-only">Start over</span>
+          </Button>
+          <Button size="sm" className="bg-ink-900 font-semibold text-white shadow-card hover:bg-ink-800" onClick={() => fileRef.current?.click()} disabled={s.busy}>
+            <Upload /> <span className="max-sm:sr-only">Upload Excel</span> <ArrowRight className="max-sm:hidden" />
           </Button>
           <input
             ref={fileRef}
@@ -66,39 +85,23 @@ export function TopBar() {
               e.target.value = "";
             }}
           />
-          <a
-            href="/Case1_Franchise_Test_Data_Format.xlsx"
-            download
-            className="inline-flex h-7 items-center gap-1 rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
-          >
-            <FileDown className="size-3.5" /> <span className="max-sm:sr-only">Download template</span>
-          </a>
-          <Button variant="outline" size="sm" onClick={() => s.setAssumptionsOpen(true)}>
-            <SlidersHorizontal /> <span className="max-sm:sr-only">Assumptions</span>
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => void doExport()} disabled={!hasData || exporting}>
-            {exporting ? <FileSpreadsheet className="animate-pulse" /> : <Download />} <span className="max-sm:sr-only">{exporting ? "Preparing…" : "Export (.xlsx)"}</span>
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setConfirmOpen(true)} disabled={!s.input && s.log.length === 0}>
-            <RotateCcw /> <span className="max-sm:sr-only">Start over</span>
-          </Button>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t bg-muted/30 px-4 py-1.5">
+      <div className="flex flex-wrap items-center gap-2 border-t border-ink-200/70 bg-white/60 px-4 py-1.5 lg:px-6">
         <RulesBadge />
-        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground" title={s.aiAvailable ? "The AI is reading notes, answering questions and translating messages. Every decision still comes from the rules." : (s.aiNote ?? "The AI isn't available, so everything is answered by the rules engine directly.")}>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2 py-0.5 text-xs text-ink-600" title={s.aiAvailable ? "The AI is reading notes, answering questions and translating messages. Every decision still comes from the rules." : (s.aiNote ?? "The AI isn't available, so everything is answered by the rules engine directly.")}>
           <span className={`size-1.5 rounded-full ${s.aiAvailable ? "bg-approved" : "bg-waitlist"}`} aria-hidden />
           {s.aiAvailable ? "AI on" : "Rules-only mode"}
         </span>
         <button
           type="button"
           onClick={() => s.setAssumptionsOpen(true)}
-          className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted"
+          className="nav-link inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-0.5 text-xs text-ink-600 hover:text-ink-900 max-sm:hidden"
         >
           <SlidersHorizontal className="size-3" aria-hidden /> Assumptions
         </button>
-        <span className="ml-auto text-xs text-muted-foreground">Saved in this browser only</span>
+        <span className="ml-auto text-xs text-ink-500 max-sm:hidden">Saved in this browser only</span>
       </div>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
