@@ -10,7 +10,8 @@
     "test": "vitest run --exclude tests/stress/**",
     "test:stress": "vitest run tests/stress --passWithNoTests",
     "flags": "tsx scripts/print-flags.ts",
-    "engine": "tsx scripts/print-engine.ts"
+    "engine": "tsx scripts/print-engine.ts",
+    "ai:smoke": "tsx scripts/ai-smoke.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

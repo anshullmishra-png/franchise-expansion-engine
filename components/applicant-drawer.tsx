@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, CalendarDays, Check, ClipboardCopy, Lightbulb, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -8,8 +8,9 @@ import { IdText } from "@/components/id-text";
 import { ConfidenceChip, StatusChip } from "@/components/status";
 import { TerritoryCard } from "@/components/tabs/territories";
 import { runEngine } from "@/lib/engine";
+import { postJson } from "@/lib/state/api";
 import { coerceValue, FIELD_LABEL, type Change } from "@/lib/engine/changes";
-import { draftMessage } from "@/lib/engine/message";
+import { draftMessage, type MessageDraft } from "@/lib/engine/message";
 import { applyOverrides } from "@/lib/engine/overrides";
 import { formatDate, getPin, pinLabel } from "@/lib/engine/reference";
 import type { Application, Decision, EditableAppField, Language } from "@/lib/engine/types";
@@ -106,18 +107,40 @@ function ApplicantPanel({ id }: { id: string }) {
 
 function DecisionTab({ d }: { d: Decision }) {
   const s = useStore();
-  const [aiNote, setAiNote] = useState(false);
+  const [simple, setSimple] = useState<{ text: string; usedFallback: boolean; reason?: string } | null>(null);
+  const [simpleBusy, setSimpleBusy] = useState(false);
   const warnings = d.flags.filter((f) => f.severity === "warning" || f.severity === "info");
   return (
     <div>
       <H>Why</H>
       <p className="leading-relaxed"><IdText text={d.whatWouldChange ? d.why.replace(d.whatWouldChange, "").replace(/\s+/g, " ").trim() : d.why} /></p>
       <div className="mt-2 flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => setAiNote(true)} aria-describedby="ai-note">
-          <Bot /> Explain simply
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={simpleBusy}
+          onClick={async () => {
+            setSimpleBusy(true);
+            const r = await postJson<{ text: string; usedFallback: boolean; reason?: string }>("/api/chat", {
+              mode: "explain",
+              explanation: d.why,
+              decision: { id: d.id, status: d.status, score: d.score, headline: d.headline },
+            });
+            setSimple(r.ok ? r.data : { text: d.why, usedFallback: true, reason: r.error });
+            setSimpleBusy(false);
+          }}
+        >
+          <Bot /> {simpleBusy ? "Rewriting…" : "Explain simply"}
         </Button>
-        {aiNote ? <span id="ai-note" className="text-xs text-muted-foreground">The AI rewrite isn&apos;t connected yet. The explanation above comes straight from the rules.</span> : null}
       </div>
+      {simple ? (
+        <div className="mt-3 rounded-lg border bg-muted/40 p-3 text-sm" role="status">
+          <IdText text={simple.text} />
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            {simple.usedFallback ? `The AI isn't available, so this is the same explanation as above. ${simple.reason ?? ""}` : "Rewritten by the AI from the explanation above; every number is the engine's."}
+          </p>
+        </div>
+      ) : null}
 
       {d.whatWouldChange && d.status !== "HOLD" ? (
         <div className="mt-4 flex gap-2 rounded-lg bg-brand-soft p-3 text-sm">
@@ -299,7 +322,25 @@ function PlanTab({ d }: { d: Decision }) {
   const [lang, setLang] = useState<Language>(app?.language ?? "English");
   const [copied, setCopied] = useState(false);
   const plan = d.readinessPlan;
-  const draft = useMemo(() => draftMessage(d, lang), [d, lang]);
+  const local = useMemo(() => draftMessage(d, lang), [d, lang]);
+  const key = `${d.id}|${lang}|${d.status}|${d.score}|${d.allocation?.pin ?? ""}`;
+  const [ai, setAi] = useState<{ key: string; draft: MessageDraft } | null>(null);
+
+  // Kannada and Hindi are written by the AI from the engine's facts; English is built locally. If the AI can't, we show English with a note.
+  useEffect(() => {
+    if (lang === "English" || ai?.key === key) return;
+    let alive = true;
+    void postJson<MessageDraft & { usedFallback?: boolean; reason?: string }>("/api/message", { decision: JSON.parse(JSON.stringify(d)), language: lang }).then((r) => {
+      if (!alive) return;
+      setAi({ key, draft: r.ok ? r.data : { ...draftMessage(d, lang), note: `Translation unavailable right now, so this is the English version. ${r.error}` } });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [d, key, lang, ai]);
+
+  const loading = lang !== "English" && ai?.key !== key;
+  const draft: MessageDraft = lang === "English" ? local : ai?.key === key ? ai.draft : local;
 
   async function copy() {
     try {
@@ -369,8 +410,15 @@ function PlanTab({ d }: { d: Decision }) {
           {copied ? <Check /> : <ClipboardCopy />} {copied ? "Copied" : "Copy"}
         </Button>
       </div>
-      {draft.note ? <p className="mb-2 rounded-md bg-waitlist-soft px-2 py-1 text-xs text-waitlist-ink">{draft.note}</p> : null}
-      <pre className="rounded-lg border bg-muted/40 p-3 text-sm leading-relaxed whitespace-pre-wrap font-sans">{draft.message}</pre>
+      {loading ? <p className="mb-2 text-xs text-muted-foreground" role="status">Writing it in {lang}…</p> : null}
+      {draft.note && !loading ? <p className="mb-2 rounded-md bg-waitlist-soft px-2 py-1 text-xs text-waitlist-ink">{draft.note}</p> : null}
+      <pre lang={lang === "Kannada" ? "kn" : lang === "Hindi" ? "hi" : "en"} className="rounded-lg border bg-muted/40 p-3 text-sm leading-relaxed whitespace-pre-wrap font-sans">{loading ? "" : draft.message}</pre>
+      {draft.translated && lang !== "English" && !loading ? (
+        <>
+          <p className="mt-3 mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">English version, for you to check</p>
+          <pre className="rounded-lg border bg-muted/20 p-3 text-sm leading-relaxed whitespace-pre-wrap font-sans">{draft.englishVersion}</pre>
+        </>
+      ) : null}
     </div>
   );
 }

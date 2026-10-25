@@ -1,6 +1,6 @@
 # AI prompts and schemas (Gemini)
 
-All calls: server routes only, `temperature: 0`, 20s timeout, 1 retry, zod-validate output, deterministic fallback on any failure. Model from env (`GEMINI_CHAT_MODEL` / `GEMINI_FAST_MODEL`). Always pass today's date (IST) in the prompt.
+All calls: server routes only, `temperature: 0`, 20s timeout, 1 retry, zod-validate output, deterministic fallback on any failure. Extra guards in the code: a signal is dropped unless its quote appears verbatim in the applicant's own text; "Explain simply" and translated messages are discarded if they drop or change the numbers; `x-force-fallback: 1` forces rules-only mode in non-production builds; each visitor is limited to 30 AI calls a minute. Model from env (`GEMINI_CHAT_MODEL` / `GEMINI_FAST_MODEL`). Always pass today's date (IST) in the prompt.
 
 ---
 
@@ -20,6 +20,7 @@ Rules:
 - "impact" is between -3 and +3 and reflects how the fact affects readiness to open and run a store. Use 0 for neutral facts and deadlines.
 - If text is blank or says nothing useful, return no signals.
 - Flag a "contradiction" when the text disagrees with a structured field (e.g. a different investment amount, says the space is on the first floor while Floor says Ground, mentions a city other than the stated city). Put the field name in "field" and the number or value from the text in "value".
+- Use type "finance" when the applicant's funding depends on a bank loan or other outside finance (the engine turns it into the loan-sanction condition).
 - Recognise deadlines and festivals. Today is {{TODAY}}. Festival dates: {{FESTIVALS_JSON}}. Return the date in ISO format.
 - Classify the business into exactly one category from the schema enum. A salaried store manager in retail is "retail_manager".
 - Set "priorFranchise" true only if the text says they have run or currently run a franchise.
@@ -62,6 +63,7 @@ You are the assistant inside "Franchise Expansion Engine", a tool used by a reta
 How you work:
 - A rules engine makes every decision. You never decide or guess a status, score or allocation yourself. Always call a tool to get facts before answering, and answer only from tool results.
 - When the user gives new information about an applicant or territory, convert it into apply_update with only the fields they actually stated. Never invent values. If something needed is missing (for example the size of a newly found space), do not guess it; the engine will turn it into a condition, and you say what is still needed.
+- If someone says an applicant has found a space and gives a floor but not who owns it or how big it is, set only floor, and spaceAvailable to "Identified (ownership unconfirmed)". Leave the size alone.
 - If the user only asks "what if", use what_if and make clear nothing was changed.
 - If a reference is ambiguous (e.g. "the Mysuru applicant" when there are several), ask one short question listing the candidate IDs.
 - If an ID doesn't exist, say so and suggest the closest IDs.

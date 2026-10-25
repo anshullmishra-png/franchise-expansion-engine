@@ -5,7 +5,9 @@ import { DEFAULT_ASSUMPTIONS, runEngine, type Assumptions } from "@/lib/engine";
 import { applyChange, diffResults, withdrawApplication, type Change, type FieldDiff } from "@/lib/engine/changes";
 import { applyExampleChoice, parseWorkbook } from "@/lib/engine/parse";
 import { todayIST } from "@/lib/engine/reference";
-import type { EngineInput, EngineResult, Overrides, ParseNotice, Status } from "@/lib/engine/types";
+import type { ChatResponse } from "@/lib/ai/service";
+import type { EngineInput, EngineResult, NoteReading, Overrides, ParseNotice, Status } from "@/lib/engine/types";
+import { getAiStatus, postJson } from "./api";
 import {
   clearPersisted,
   loadPersisted,
@@ -35,7 +37,12 @@ export interface Store {
   result: EngineResult | null;
   engineError: string | null;
   includeExamples: { application: boolean; territory: boolean };
+  /** Whether the AI is configured on the server and working: shown as the AI / Rules-only badge. */
   aiAvailable: boolean;
+  aiNote: string | null;
+  readings: NoteReading[] | null;
+  chatBusy: boolean;
+  sendChat: (text: string) => Promise<void>;
   // UI state
   tab: TabKey;
   setTab: (t: TabKey) => void;
@@ -75,12 +82,16 @@ function safeRun(
   input: EngineInput | null,
   assumptions: Assumptions,
   overrides: Overrides,
-  today: string
+  today: string,
+  readings: NoteReading[] | null = null
 ): { result: EngineResult | null; error: string | null } {
   if (!input) return { result: null, error: null };
   try {
     // The decision engine re-verifies the placement rules itself; the UI shows the verdict instead of crashing.
-    return { result: runEngine(input, assumptions, overrides, { today, simulate: false, throwOnViolation: false }), error: null };
+    return {
+      result: runEngine(input, assumptions, overrides, { today, simulate: false, throwOnViolation: false, ...(readings ? { readings } : {}) }),
+      error: null,
+    };
   } catch (e) {
     return { result: null, error: e instanceof Error ? e.message : "The engine could not process this data." };
   }
@@ -121,19 +132,34 @@ function StoreInner({ children }: { children: ReactNode }) {
   const [assumptionsOpen, setAssumptionsOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(saved?.chatOpen ?? true);
   const [statusFilter, setStatusFilter] = useState<Status[]>([]);
+  const [readings, setReadings] = useState<NoteReading[] | null>(saved?.readings ?? null);
+  const [aiConfigured, setAiConfigured] = useState<boolean | null>(null);
+  const [aiDown, setAiDown] = useState<string | null>(null);
+  const [chatBusy, setChatBusy] = useState(false);
+
+  // Ask the server once whether an AI key is configured (it never says what the key is).
+  useEffect(() => {
+    let alive = true;
+    void getAiStatus().then((v) => {
+      if (alive) setAiConfigured(v);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Save on change (debounced).
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
-      const snapshot: Persisted = { v: 1, fileName, baseInput, notices, includeExamples, assumptions, overrides, log, chat, chatOpen };
+      const snapshot: Persisted = { v: 1, fileName, baseInput, notices, includeExamples, assumptions, overrides, log, chat, chatOpen, readings: readings ?? undefined };
       savePersisted(snapshot);
     }, 250);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [fileName, baseInput, notices, includeExamples, assumptions, overrides, log, chat, chatOpen]);
+  }, [fileName, baseInput, notices, includeExamples, assumptions, overrides, log, chat, chatOpen, readings]);
 
   const input = useMemo(
     () =>
@@ -143,8 +169,25 @@ function StoreInner({ children }: { children: ReactNode }) {
     [baseInput, includeExamples]
   );
 
-  const run = useMemo(() => safeRun(input, assumptions, overrides, today), [input, assumptions, overrides, today]);
+  const run = useMemo(() => safeRun(input, assumptions, overrides, today, readings), [input, assumptions, overrides, today, readings]);
   const result = run.result;
+
+  // Read each applicant's notes once per file: the AI when it's available, the rules otherwise.
+  const fileToken = useRef(0);
+  const extractNotes = useCallback((apps: EngineInput["applications"], token: number) => {
+    const slim = apps.map((a) => ({
+      id: a.id, city: a.city, pin: a.pin, investmentLakh: a.investmentLakh, experienceYears: a.experienceYears, spaceAvailable: a.spaceAvailable,
+      spaceSize: a.spaceSize, floor: a.floor, targetLaunchMonths: a.targetLaunchMonths, business: a.business, notes: a.notes,
+    }));
+    if (!slim.some((a) => a.business || a.notes)) return;
+    void postJson<{ readings: NoteReading[]; usedFallback: boolean; reason?: string }>("/api/extract", { applications: slim, today: todayIST() }).then((r) => {
+      if (token !== fileToken.current) return;
+      if (r.ok) {
+        setReadings(r.data.readings);
+        setAiDown(r.data.usedFallback ? (r.data.reason ?? "The AI couldn't read the notes.") : null);
+      } else setAiDown(r.error);
+    });
+  }, []);
 
   const ingest = useCallback((bytes: ArrayBuffer, name: string) => {
     const parsed = parseWorkbook(bytes);
@@ -156,6 +199,10 @@ function StoreInner({ children }: { children: ReactNode }) {
     setFileName(name);
     setBaseInput(parsed.input);
     setNotices(parsed.notices);
+    setReadings(null);
+    setAiDown(null);
+    fileToken.current += 1;
+    extractNotes(parsed.input.applications, fileToken.current);
     setIncludeExamples({ application: false, territory: false });
     // A new file starts clean: edits made to the old one would otherwise attach to matching IDs.
     setOverrides({});
@@ -165,7 +212,7 @@ function StoreInner({ children }: { children: ReactNode }) {
     setDrawer(null);
     setTab("overview");
     return true;
-  }, []);
+  }, [extractNotes]);
 
   const loadFile = useCallback(
     async (file: File) => {
@@ -213,6 +260,9 @@ function StoreInner({ children }: { children: ReactNode }) {
     setOverrides({});
     setLog([]);
     setChat([]);
+    setReadings(null);
+    setAiDown(null);
+    fileToken.current += 1;
     setStatusFilter([]);
     setDrawer(null);
     setTab("overview");
@@ -237,7 +287,7 @@ function StoreInner({ children }: { children: ReactNode }) {
         }
       }
       if (!diffs.length) return null;
-      const after = safeRun(input, assumptions, ov, today).result;
+      const after = safeRun(input, assumptions, ov, today, readings).result;
       const entry: ChangeLogEntry = {
         id: uid(),
         at: new Date().toISOString(),
@@ -251,7 +301,7 @@ function StoreInner({ children }: { children: ReactNode }) {
       pushLog(entry);
       return entry;
     },
-    [input, result, overrides, assumptions, today, pushLog]
+    [input, result, overrides, assumptions, today, readings, pushLog]
   );
 
   const withdraw = useCallback<Store["withdraw"]>(
@@ -259,7 +309,7 @@ function StoreInner({ children }: { children: ReactNode }) {
       if (!input || !result) return null;
       const r = withdrawApplication(input, overrides, id, reason);
       if (!r) return null;
-      const after = safeRun(input, assumptions, r.overrides, today).result;
+      const after = safeRun(input, assumptions, r.overrides, today, readings).result;
       const entry: ChangeLogEntry = {
         id: uid(),
         at: new Date().toISOString(),
@@ -273,7 +323,7 @@ function StoreInner({ children }: { children: ReactNode }) {
       pushLog(entry);
       return entry;
     },
-    [input, result, overrides, assumptions, today, pushLog]
+    [input, result, overrides, assumptions, today, readings, pushLog]
   );
 
   const changeAssumptions = useCallback<Store["changeAssumptions"]>(
@@ -282,7 +332,7 @@ function StoreInner({ children }: { children: ReactNode }) {
         setAssumptions(next);
         return null;
       }
-      const after = safeRun(input, next, overrides, today).result;
+      const after = safeRun(input, next, overrides, today, readings).result;
       const entry: ChangeLogEntry = {
         id: uid(),
         at: new Date().toISOString(),
@@ -296,7 +346,7 @@ function StoreInner({ children }: { children: ReactNode }) {
       pushLog(entry);
       return entry;
     },
-    [input, result, overrides, assumptions, today, pushLog]
+    [input, result, overrides, assumptions, today, readings, pushLog]
   );
 
   const undo = useCallback<Store["undo"]>(() => {
@@ -309,6 +359,60 @@ function StoreInner({ children }: { children: ReactNode }) {
   }, [log]);
 
   const addChat = useCallback<Store["addChat"]>((m) => setChat((c) => [...c, { ...m, id: uid(), at: new Date().toISOString() }]), []);
+
+  const sendChat = useCallback<Store["sendChat"]>(
+    async (text) => {
+      const q = text.trim();
+      if (!q || chatBusy) return;
+      addChat({ role: "user", text: q });
+      if (!input) {
+        addChat({ role: "assistant", rulesOnly: true, text: "Load a file first (Load sample data or Upload Excel), then ask me about the applicants." });
+        return;
+      }
+      setChatBusy(true);
+      const history = [...chat, { role: "user" as const, text: q }].slice(-12).map((m) => ({ role: m.role, text: m.text }));
+      const latestActive = log.find((e) => !e.undone);
+      const res = await postJson<ChatResponse>("/api/chat", {
+        messages: history,
+        state: {
+          input: { applications: input.applications, territories: input.territories, existingStores: input.existingStores },
+          overrides,
+          assumptions,
+          readings: readings ?? [],
+          undoTo: latestActive ? latestActive.prev : null,
+          today,
+        },
+      });
+      setChatBusy(false);
+      if (!res.ok) {
+        addChat({ role: "assistant", rulesOnly: true, text: `Sorry, that didn't go through: ${res.error} Nothing was changed.` });
+        setAiDown(res.error);
+        return;
+      }
+      const d = res.data;
+      setAiDown(d.usedFallback ? (d.reason ?? "Rules-only answer.") : null);
+      if (d.entries?.length && d.newOverrides && d.newAssumptions) {
+        const fresh: ChangeLogEntry[] = [];
+        let markUndone = 0;
+        for (const e of d.entries) {
+          if (e.fieldDiffs.some((f) => f.field === "undo")) markUndone++;
+          else fresh.push({ id: uid(), at: new Date().toISOString(), source: "Chat", sourceText: e.sourceText, fieldDiffs: e.fieldDiffs, statusDiffs: e.statusDiffs, prev: e.prev });
+        }
+        setLog((l) => {
+          let next = l;
+          for (let i = 0; i < markUndone; i++) {
+            const idx = next.findIndex((e) => !e.undone);
+            if (idx >= 0) next = next.map((e, j) => (j === idx ? { ...e, undone: true } : e));
+          }
+          return [...fresh.reverse(), ...next];
+        });
+        setOverrides(d.newOverrides);
+        setAssumptions({ ...DEFAULT_ASSUMPTIONS, ...d.newAssumptions });
+      }
+      addChat({ role: "assistant", text: d.reply, rulesOnly: d.usedFallback });
+    },
+    [addChat, assumptions, chat, chatBusy, input, log, overrides, readings, today]
+  );
   const clearChat = useCallback(() => setChat([]), []);
 
   const value: Store = {
@@ -326,7 +430,11 @@ function StoreInner({ children }: { children: ReactNode }) {
     result,
     engineError: run.error,
     includeExamples,
-    aiAvailable: false,
+    aiAvailable: aiConfigured === true && !aiDown,
+    aiNote: aiConfigured === false ? "No AI key is set on the server, so everything is answered by the rules." : aiDown,
+    readings,
+    chatBusy,
+    sendChat,
     tab,
     setTab,
     drawer,

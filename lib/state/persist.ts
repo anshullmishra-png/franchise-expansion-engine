@@ -1,6 +1,6 @@
 import type { Assumptions } from "../engine/assumptions";
 import type { FieldDiff, OutcomeDiff } from "../engine/changes";
-import type { EngineInput, Overrides, ParseNotice } from "../engine/types";
+import type { EngineInput, NoteReading, Overrides, ParseNotice } from "../engine/types";
 
 // Everything the app remembers between visits lives in localStorage under one key. Every read and write is
 // wrapped in try/catch so the app works when storage is blocked, full or corrupt.
@@ -41,6 +41,8 @@ export interface Persisted {
   log: ChangeLogEntry[];
   chat: ChatMessage[];
   chatOpen: boolean;
+  /** AI-read (or rules-read) note signals for the loaded file. */
+  readings?: NoteReading[];
 }
 
 export function isPersisted(x: unknown): x is Persisted {

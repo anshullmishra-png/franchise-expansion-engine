@@ -189,7 +189,9 @@ export function outcomeOf(d: Decision): Outcome {
     ? `${pinLabel(d.allocation.pin)}, ${d.allocation.territoryId}`
     : d.waitlistRank
       ? `waitlist #${d.waitlistRank.rank} for ${d.waitlistRank.territoryId}`
-      : "";
+      : d.withdrawn !== undefined
+        ? "withdrawn"
+        : "";
   return { status: d.status, score: d.score, where };
 }
 
