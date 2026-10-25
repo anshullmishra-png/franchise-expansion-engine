@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { IdText } from "@/components/id-text";
 import { ConfidenceChip, StatusChip } from "@/components/status";
+import { MiniMap } from "@/components/map/mini-map";
 import { TerritoryCard } from "@/components/tabs/territories";
 import { runEngine } from "@/lib/engine";
 import { postJson } from "@/lib/state/api";
@@ -246,7 +247,8 @@ function DecisionTab({ d }: { d: Decision }) {
               </tbody>
             </table>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">Measured from the {d.allocation ? "allocated" : "applied-for"} pin, {d.allocation ? pinLabel(d.allocation.pin) : d.pin}. A mini map arrives with the map view.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Measured from the {d.allocation ? "allocated" : "applied-for"} pin, {d.allocation ? pinLabel(d.allocation.pin) : d.pin}.</p>
+          <MiniMap id={d.id} />
         </>
       ) : null}
 
