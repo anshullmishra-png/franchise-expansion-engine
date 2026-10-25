@@ -40,6 +40,11 @@ if (why) {
     for (const c of d.breakdown) console.log(`  ${pad(c.name, 22)}${String(c.points).padStart(3)}/${c.max}  ${c.reason}`);
     for (const f of d.flags) console.log(`  [${f.severity}] ${f.code}: ${f.message}`);
     for (const c of d.competitors ?? []) console.log(`  competitor ${c.id} (${c.outcome}): ${c.whyTheyWon}`);
+    if (d.whatWouldChange) console.log(`  what would change it: ${d.whatWouldChange}`);
+    for (const s of d.nextSteps ?? []) console.log(`  next ${s.due} [${s.owner}] ${s.text}`);
+    for (const b of d.readinessPlan?.timeline ?? []) console.log(`  timeline ${b.start}${b.end !== b.start ? ` to ${b.end}` : ""}  ${b.label}`);
+    const tr = d.readinessPlan?.training;
+    if (tr) console.log(`  training (${tr.track}, ${tr.language}, ${tr.totalDays} days): ${tr.shadowing?.text ?? ""}`);
   }
 }
 console.log("");

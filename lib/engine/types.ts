@@ -159,6 +159,7 @@ export type FlagCode =
   | "CONFIRM_FLOOR"
   | "SPACE_CONTRADICTION"
   | "LOAN_DEPENDENT"
+  | "SITE_AT_NEW_PIN"
   // Warnings / info (application)
   | "HAS_PROBABLE_DUPLICATE"
   | "STATE_MISMATCH"
@@ -333,6 +334,72 @@ export type TraceStep =
   | { kind: "below-min-score"; score: number; min: number }
   | { kind: "allocated"; territoryId: string; pin: string; redirect: boolean };
 
+// ---- Onboarding (SPEC §7) ----
+
+export interface Step {
+  text: string;
+  owner: "Partner" | "Brand";
+  /** ISO date */
+  due: string;
+}
+
+export interface TimelineBar {
+  key:
+    | "conditions"
+    | "agreement"
+    | "licences"
+    | "fitout"
+    | "hiring"
+    | "partner-training"
+    | "staff-training"
+    | "soft-launch"
+    | "opening"
+    | "review-30"
+    | "review-60"
+    | "review-90";
+  label: string;
+  /** ISO dates. A milestone has start === end. */
+  start: string;
+  end: string;
+}
+
+export interface TrainingModule {
+  name: string;
+  days: number;
+  kind: "core" | "bootcamp" | "shadowing";
+}
+
+export interface TrainingPlan {
+  language: Language;
+  /** Set when the applicant gave no (or an unrecognised) preferred language. */
+  languageNote?: string;
+  track: "standard" | "extended" | "fast-track";
+  trackReason: string;
+  modules: TrainingModule[];
+  totalDays: number;
+  /** Where the applicant shadows, and the partner who mentors them. Null if no store has a map position. */
+  shadowing: {
+    storeId: string;
+    city: string | null;
+    area: string | null;
+    km: number;
+    days: number;
+    /** The nearest store is far away, so a residential stint is suggested. */
+    residential: boolean;
+    text: string;
+  } | null;
+  buddy: { storeId: string; text: string } | null;
+  staffTraining: { days: number; start: string; text: string };
+  materials: string;
+}
+
+export interface ReadinessPlan {
+  /** True for waitlisted applicants: training only, dates start once a slot is confirmed. */
+  indicative: boolean;
+  timeline: TimelineBar[];
+  training: TrainingPlan;
+}
+
 export interface Decision {
   id: string;
   name: string | null;
@@ -362,6 +429,8 @@ export interface Decision {
   conditions?: Condition[];
   questionsForApplicant?: string[];
   whatWouldChange?: string;
+  nextSteps?: Step[];
+  readinessPlan?: ReadinessPlan;
   confidence: "high" | "medium" | "low";
   realisticMonths: number | null;
   plannedOpenDate: string | null;
