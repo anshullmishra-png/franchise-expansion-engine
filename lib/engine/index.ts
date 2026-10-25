@@ -59,6 +59,8 @@ export interface EngineOptions {
   throwOnViolation?: boolean;
   /** Work out "what would change it" by re-running the engine for each applicant who isn't moving forward. Default true. */
   simulate?: boolean;
+  /** With simulate on, only these applicants get a "what would change it" (the UI asks for one at a time). */
+  simulateFor?: string[];
 }
 
 export { DEFAULT_ASSUMPTIONS };
@@ -455,6 +457,7 @@ export function runEngine(
     };
     for (const d of drafts) {
       if (d.status === "APPROVED" || d.status === "CONDITIONAL" || d.status === "REDIRECT") continue;
+      if (options.simulateFor && !options.simulateFor.includes(d.id)) continue;
       d.whatWouldChange = whatWouldChange(d, ctxById.get(d.id)!.app, simulate);
     }
   }
