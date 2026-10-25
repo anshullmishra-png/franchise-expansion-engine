@@ -658,7 +658,7 @@ function buildAlerts(input: EngineInput, r: ValidationResult): DataAlert[] {
   const appIdsWith = (code: FlagCode) => Object.entries(r.applications).filter(([, f]) => f.some((x) => x.code === code)).map(([id]) => id);
   const terIdsWith = (code: FlagCode) => Object.entries(r.territories).filter(([, f]) => f.some((x) => x.code === code)).map(([id]) => id);
 
-  for (const ex of input.excludedExamples.applications) {
+  for (const ex of input.excludedExamples?.applications ?? []) {
     alerts.push({
       code: "EXAMPLE_ROW_IGNORED",
       severity: "info",
@@ -666,7 +666,7 @@ function buildAlerts(input: EngineInput, r: ValidationResult): DataAlert[] {
       ids: [ex.row.sourceId],
     });
   }
-  for (const ex of input.excludedExamples.territories) {
+  for (const ex of input.excludedExamples?.territories ?? []) {
     alerts.push({
       code: "EXAMPLE_ROW_IGNORED",
       severity: "info",

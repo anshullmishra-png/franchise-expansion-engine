@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { MessageSquare, PanelRightClose, PanelRightOpen, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { IdText } from "@/components/id-text";
+import { RichText } from "@/components/rich-text";
 import { useStore } from "@/lib/state/store";
 
 export const SUGGESTED_QUESTIONS = [
@@ -21,19 +21,13 @@ function ChatBody() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [s.chat.length]);
+  }, [s.chat.length, s.chatBusy]);
 
   function send(t: string) {
     const q = t.trim();
-    if (!q) return;
-    s.addChat({ role: "user", text: q });
-    // The chat is connected to the engine in the next build phase.
-    s.addChat({
-      role: "assistant",
-      rulesOnly: true,
-      text: "The chat isn't connected to the engine yet. For now, click any applicant or territory ID to see its decision, the reasons and what would change it.",
-    });
+    if (!q || s.chatBusy) return;
     setText("");
+    void s.sendChat(q);
   }
 
   return (
@@ -41,15 +35,22 @@ function ChatBody() {
       <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3" aria-live="polite">
         {s.chat.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Ask why an applicant got their decision, compare two applicants, or tell the engine something new, like &ldquo;APP-012 has now found a ground-floor space&rdquo;.
+            Ask why an applicant got their decision, compare two applicants, or tell the engine something new, like &ldquo;APP-012 has now found a ground-floor space&rdquo;. Every answer comes from
+            the rules engine, with the numbers.
           </p>
         ) : (
           s.chat.map((m) => (
-            <div key={m.id} className={`max-w-[92%] rounded-lg px-3 py-2 text-sm ${m.role === "user" ? "ml-auto bg-brand text-white" : "bg-muted"}`}>
-              {m.role === "assistant" ? <IdText text={m.text} /> : m.text}
+            <div key={m.id} className={`max-w-[94%] rounded-lg px-3 py-2 text-sm ${m.role === "user" ? "ml-auto bg-brand text-white" : "bg-muted"}`}>
+              {m.role === "assistant" ? <RichText text={m.text} /> : m.text}
+              {m.role === "assistant" && m.rulesOnly ? <span className="mt-1 block text-[11px] text-muted-foreground">Rules-only answer</span> : null}
             </div>
           ))
         )}
+        {s.chatBusy ? (
+          <div className="max-w-[94%] rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground" role="status">
+            Checking the engine…
+          </div>
+        ) : null}
         <div ref={endRef} />
       </div>
 
@@ -59,8 +60,9 @@ function ChatBody() {
             <button
               key={q}
               type="button"
-              onClick={() => setText(q)}
-              className="rounded-full border px-2.5 py-1 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+              disabled={s.chatBusy}
+              onClick={() => send(q)}
+              className="rounded-full border px-2.5 py-1 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
             >
               {q}
             </button>
@@ -80,7 +82,7 @@ function ChatBody() {
             aria-label="Message the engine"
             className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
-          <Button type="submit" size="icon-lg" aria-label="Send" disabled={!text.trim()}>
+          <Button type="submit" size="icon-lg" aria-label="Send" disabled={!text.trim() || s.chatBusy}>
             <Send />
           </Button>
         </form>

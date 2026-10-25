@@ -87,7 +87,7 @@ export function TopBar() {
 
       <div className="flex flex-wrap items-center gap-2 border-t bg-muted/30 px-4 py-1.5">
         <RulesBadge />
-        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground" title={s.aiAvailable ? "AI is explaining and answering" : "The AI layer isn't connected, so explanations come from the rules engine directly"}>
+        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground" title={s.aiAvailable ? "The AI is reading notes, answering questions and translating messages. Every decision still comes from the rules." : (s.aiNote ?? "The AI isn't available, so everything is answered by the rules engine directly.")}>
           <span className={`size-1.5 rounded-full ${s.aiAvailable ? "bg-approved" : "bg-waitlist"}`} aria-hidden />
           {s.aiAvailable ? "AI on" : "Rules-only mode"}
         </span>

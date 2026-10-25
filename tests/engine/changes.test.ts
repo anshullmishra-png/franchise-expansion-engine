@@ -121,7 +121,7 @@ describe("message draft", () => {
     const rej = runEngine(mkInput([mkApp({ id: "APP-3", name: "C Three", investmentLakh: 15 })], [ter]), DEFAULT_ASSUMPTIONS, {}, { today: TODAY, simulate: true });
     const m = englishMessage(rej.decisionById["APP-3"]);
     expect(m).toMatch(/below the minimum/);
-    expect(m).toMatch(/At ₹21 lakh/);
+    expect(m).toMatch(/about ₹21 lakh or more/);
   });
   it("is under about 140 words for approved applicants, and falls back to English with a note for other languages", () => {
     expect(englishMessage(r.decisionById["APP-1"]).split(/\s+/).length).toBeLessThan(160);

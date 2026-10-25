@@ -119,13 +119,13 @@ export function parseWorkbookObject(wb: XLSX.WorkBook, options: ParseOptions = {
 export function applyExampleChoice(input: EngineInput, options: ParseOptions): EngineInput {
   const apps = [...input.applications];
   const keptApps: ExcludedExample<Application>[] = [];
-  for (const ex of input.excludedExamples.applications) {
+  for (const ex of input.excludedExamples?.applications ?? []) {
     if (options.includeExampleApplication && !ex.locked) apps.push(ex.row);
     else keptApps.push(ex);
   }
   const ters = [...input.territories];
   const keptTers: ExcludedExample<Territory>[] = [];
-  for (const ex of input.excludedExamples.territories) {
+  for (const ex of input.excludedExamples?.territories ?? []) {
     if (options.includeExampleTerritory && !ex.locked) ters.push(ex.row);
     else keptTers.push(ex);
   }

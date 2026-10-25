@@ -14,7 +14,24 @@ export interface MessageDraft {
 }
 
 const firstName = (name: string | null, id: string) => (name ? name.trim().split(/\s+/)[0] : id);
-const firstSentence = (s: string) => (s.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? s).trim();
+
+/** What the applicant themselves could do to improve things, in words that are safe to send them. */
+function improvementLine(d: Decision): string {
+  const codes = new Set(d.flags.map((f) => f.code));
+  const bits: string[] = [];
+  if (codes.has("FIND_SPACE")) bits.push("finding a ground-floor space of at least 300 sq ft");
+  else if (codes.has("NEED_GROUND_FLOOR") || codes.has("SPACE_TOO_SMALL")) bits.push("moving to a ground-floor space of at least 300 sq ft");
+  if (codes.has("FIN_GAP") || codes.has("FIN_GAP_LARGE")) bits.push("closing the funding gap");
+  if (!bits.length) return "";
+  const text = bits.join(" and ");
+  return `${text[0].toUpperCase()}${text.slice(1)} would strengthen your application.`;
+}
+
+/** For a rejection on investment: the lowest figure we could look at again (60% of the tier need). */
+function minimumInvestment(d: Decision): string {
+  const need = Number(d.breakdown.find((c) => c.key === "financial")?.reason.match(/of the ₹(\d+(?:\.\d+)?) lakh/)?.[1]);
+  return Number.isFinite(need) ? ` If you can raise your investment to about ₹${Math.ceil(need * 0.6 * 2) / 2} lakh or more, we would be glad to look again.` : "";
+}
 
 export function englishMessage(d: Decision): string {
   const hi = `Dear ${firstName(d.name, d.id)},`;
@@ -46,13 +63,12 @@ export function englishMessage(d: Decision): string {
     }
     case "WAITLIST": {
       const rank = d.waitlistRank ? ` You are #${d.waitlistRank.rank} for ${d.waitlistRank.territoryId}.` : "";
-      const why = d.whatWouldChange ? ` ${firstSentence(d.whatWouldChange)}` : "";
-      return [hi, "", `Thank you for applying. We are not able to confirm a store for you right now, so you are on our waitlist.${rank}${why}`, "", "We will contact you as soon as a place opens up.", "", sign].join("\n");
+      const help = improvementLine(d);
+      return [hi, "", `Thank you for applying. We are not able to confirm a store for you right now, so you are on our waitlist.${rank}${help ? ` ${help}` : ""}`, "", "We will contact you as soon as a place opens up.", "", sign].join("\n");
     }
     case "REJECTED": {
       if (d.withdrawn !== undefined) return [hi, "", "We have noted that you have withdrawn your application. Thank you for your interest, and you are welcome to apply again in future.", "", sign].join("\n");
-      const how = d.whatWouldChange ? ` ${firstSentence(d.whatWouldChange)}` : "";
-      return [hi, "", `Thank you for applying. We cannot go ahead with the application as it stands, because the investment is below the minimum we need for a store.${how}`, "", "We would be glad to look at it again if that changes.", "", sign].join("\n");
+      return [hi, "", `Thank you for applying. We cannot go ahead with the application as it stands, because the investment is below the minimum we need for a store.${minimumInvestment(d)}`, "", sign].join("\n");
     }
   }
 }
