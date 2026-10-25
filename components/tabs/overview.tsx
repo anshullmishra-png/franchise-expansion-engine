@@ -54,7 +54,7 @@ export function OverviewTab() {
               key={st}
               type="button"
               onClick={() => filterBy(st)}
-              className={`rounded-xl border-l-4 bg-card p-3 text-left ring-1 ring-foreground/10 transition hover:ring-foreground/30 ${m.tile}`}
+              className={`rounded-2xl border border-l-4 border-ink-200 bg-card p-3 text-left shadow-card transition hover:shadow-pop ${m.tile}`}
               aria-label={`${r.counts[st]} ${m.label}. Show them in the table`}
             >
               <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${m.chip}`}>

@@ -8,12 +8,12 @@ import type { Decision, Status } from "@/lib/engine/types";
 // Every chip also shows the status word, so colour is never the only signal.
 
 export const STATUS_META: Record<Status, { label: string; icon: LucideIcon; chip: string; bar: string; dot: string; tile: string }> = {
-  APPROVED: { label: "Approved", icon: CheckCircle2, chip: "bg-approved-soft text-approved-ink", bar: "bg-approved", dot: "bg-approved", tile: "border-approved/40" },
-  CONDITIONAL: { label: "Conditional", icon: ShieldCheck, chip: "bg-conditional-soft text-conditional-ink", bar: "bg-conditional", dot: "bg-conditional", tile: "border-conditional/40" },
-  REDIRECT: { label: "Redirect", icon: ArrowRightLeft, chip: "bg-redirect-soft text-redirect-ink", bar: "bg-redirect", dot: "bg-redirect", tile: "border-redirect/40" },
-  WAITLIST: { label: "Waitlist", icon: Clock, chip: "bg-waitlist-soft text-waitlist-ink", bar: "bg-waitlist", dot: "bg-waitlist", tile: "border-waitlist/50" },
-  HOLD: { label: "Hold", icon: PauseCircle, chip: "bg-hold-soft text-hold-ink", bar: "bg-hold", dot: "bg-hold", tile: "border-hold/40" },
-  REJECTED: { label: "Rejected", icon: XCircle, chip: "bg-rejected-soft text-rejected-ink", bar: "bg-rejected", dot: "bg-rejected", tile: "border-rejected/40" },
+  APPROVED: { label: "Approved", icon: CheckCircle2, chip: "bg-approved-soft text-approved-ink", bar: "bg-approved", dot: "bg-approved", tile: "border-l-approved" },
+  CONDITIONAL: { label: "Conditional", icon: ShieldCheck, chip: "bg-conditional-soft text-conditional-ink", bar: "bg-conditional", dot: "bg-conditional", tile: "border-l-conditional" },
+  REDIRECT: { label: "Redirect", icon: ArrowRightLeft, chip: "bg-redirect-soft text-redirect-ink", bar: "bg-redirect", dot: "bg-redirect", tile: "border-l-redirect" },
+  WAITLIST: { label: "Waitlist", icon: Clock, chip: "bg-waitlist-soft text-waitlist-ink", bar: "bg-waitlist", dot: "bg-waitlist", tile: "border-l-waitlist" },
+  HOLD: { label: "Hold", icon: PauseCircle, chip: "bg-hold-soft text-hold-ink", bar: "bg-hold", dot: "bg-hold", tile: "border-l-hold" },
+  REJECTED: { label: "Rejected", icon: XCircle, chip: "bg-rejected-soft text-rejected-ink", bar: "bg-rejected", dot: "bg-rejected", tile: "border-l-rejected" },
 };
 
 export function StatusChip({ status, className }: { status: Status; className?: string }) {

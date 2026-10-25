@@ -97,7 +97,7 @@ export function AssumptionsDrawer() {
           ) : null}
           {GROUPS.map((g) => (
             <section key={g} className="mt-4">
-              <h3 className="mb-1 border-b pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{g}</h3>
+              <h3 className="mb-1 border-b pb-1 text-xs font-semibold tracky text-muted-foreground uppercase">{g}</h3>
               {DEFS.filter((d) => d.group === g).map((d) => <Row key={`${d.id}:${d.get(s.assumptions)}`} def={d} a={s.assumptions} />)}
             </section>
           ))}

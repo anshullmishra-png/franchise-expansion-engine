@@ -19,7 +19,7 @@ import { useStore } from "@/lib/state/store";
 type DrawerTab = "decision" | "plan" | "edit";
 
 const H = ({ children }: { children: React.ReactNode }) => (
-  <h3 className="mt-5 mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase first:mt-0">{children}</h3>
+  <h3 className="mt-5 mb-2 text-xs font-semibold tracky text-muted-foreground uppercase first:mt-0">{children}</h3>
 );
 
 export function DrawerRoot() {
@@ -415,7 +415,7 @@ function PlanTab({ d }: { d: Decision }) {
       <pre lang={lang === "Kannada" ? "kn" : lang === "Hindi" ? "hi" : "en"} className="rounded-lg border bg-muted/40 p-3 text-sm leading-relaxed whitespace-pre-wrap font-sans">{loading ? "" : draft.message}</pre>
       {draft.translated && lang !== "English" && !loading ? (
         <>
-          <p className="mt-3 mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">English version, for you to check</p>
+          <p className="mt-3 mb-1 text-xs font-semibold tracky text-muted-foreground uppercase">English version, for you to check</p>
           <pre className="rounded-lg border bg-muted/20 p-3 text-sm leading-relaxed whitespace-pre-wrap font-sans">{draft.englishVersion}</pre>
         </>
       ) : null}
