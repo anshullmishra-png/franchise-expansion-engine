@@ -168,6 +168,8 @@ export type FlagCode =
   | "NO_TERRITORY"
   | "PIN_IN_MULTIPLE_TERRITORIES"
   | "SAME_APPLICANT_MULTIPLE"
+  | "UNREALISTIC_TARGET"
+  | "PAYBACK_LONG"
   | "APPROX_COORDS"
   | "ZERO_EXPERIENCE"
   | "UNPARSEABLE_VALUE"
@@ -240,4 +242,195 @@ export interface NoteReading {
   businessCategory: BusinessCategory;
   priorFranchise: boolean;
   signals: NoteSignal[];
+}
+
+// ---- Engine output (SPEC §6) ----
+
+export type Status = "APPROVED" | "CONDITIONAL" | "REDIRECT" | "WAITLIST" | "HOLD" | "REJECTED";
+
+export const STATUSES: Status[] = ["APPROVED", "CONDITIONAL", "REDIRECT", "WAITLIST", "HOLD", "REJECTED"];
+
+export type ScoreKey = "financial" | "experience" | "site" | "location" | "launch" | "signals";
+
+export interface ScoreComponent {
+  key: ScoreKey;
+  name: string;
+  points: number;
+  /** Maximum for the component. The AI-signals component can also go down to -max. */
+  max: number;
+  reason: string;
+  /** For the signals component: the AI-read signals counted, each with its quote. */
+  signals?: NoteSignal[];
+}
+
+export interface Reason {
+  code: string;
+  text: string;
+  impact: "decisive" | "major" | "minor";
+}
+
+export interface Allocation {
+  territoryId: string;
+  pin: string;
+  area: string | null;
+  /** Set when the applicant did not get the pin they applied for. */
+  redirectedFrom?: { territoryId: string | null; pin: string };
+  /** Redirects hold the slot for this long while the applicant secures a site there (ISO date). */
+  slotReservedUntil?: string;
+}
+
+export interface CannibalisationRow {
+  /** Existing store ID, or the applicant ID of a newly allocated store. */
+  storeId: string;
+  kind: "existing" | "new";
+  km: number;
+  overlapPct: number;
+  band: "Low" | "Moderate" | "Elevated" | "Blocked";
+}
+
+export interface Competitor {
+  id: string;
+  score: number | null;
+  outcome: Status;
+  whyTheyWon: string;
+}
+
+export interface PaybackResult {
+  months: number;
+  inputs: {
+    investmentLakh: number;
+    tierRevenueLakh: number;
+    floorFactor: number;
+    sizeFactor: number;
+    overlapPct: number;
+    overlapFactor: number;
+    monthlyRevenueLakh: number;
+    profitPct: number;
+    monthlyProfitLakh: number;
+  };
+}
+
+export interface Condition {
+  code: FlagCode;
+  text: string;
+  /** ISO date */
+  deadline: string;
+  owner: "Partner" | "Brand";
+}
+
+/** What happened to the applicant while slots and pins were being allocated. Raw material for explanations. */
+export type TraceStep =
+  | { kind: "no-territory"; pin: string }
+  | { kind: "no-coords"; pin: string }
+  | { kind: "own-pin-store"; pin: string; storeId: string }
+  | { kind: "own-pin-overlap"; pin: string; storeId: string; overlapPct: number; km: number }
+  | { kind: "own-pin-taken"; pin: string; by: string }
+  | { kind: "own-pin-overlap-new"; pin: string; with: string; withPin: string; overlapPct: number; km: number }
+  | { kind: "territory-full"; territoryId: string; heldBy: string[] }
+  | { kind: "same-person"; other: string }
+  | { kind: "no-viable-pin"; territoryId: string }
+  | { kind: "no-free-slot-in-city"; city: string | null }
+  | { kind: "below-min-score"; score: number; min: number }
+  | { kind: "allocated"; territoryId: string; pin: string; redirect: boolean };
+
+export interface Decision {
+  id: string;
+  name: string | null;
+  city: string | null;
+  /** The pin the applicant applied for. */
+  pin: string | null;
+  tier: Tier | null;
+  status: Status;
+  /** One line, e.g. "Approved for 560095 (Koramangala VI Bk), TER-01". */
+  headline: string;
+  /** A short plain-language paragraph: the decision, the deciding numbers, what happens next. */
+  why: string;
+  score: number | null;
+  /** Score used for ordering: score minus the redirect penalty where it applies. */
+  effectiveScore: number | null;
+  redirectPenaltyApplied: boolean;
+  breakdown: ScoreComponent[];
+  reasons: Reason[];
+  flags: Flag[];
+  allocation?: Allocation;
+  /** Territory that lists the applicant's own pin (best match when several do). */
+  ownTerritoryId: string | null;
+  competitors?: Competitor[];
+  cannibalisation: CannibalisationRow[];
+  payback?: PaybackResult;
+  waitlistRank?: { territoryId: string; rank: number; of: number };
+  conditions?: Condition[];
+  questionsForApplicant?: string[];
+  whatWouldChange?: string;
+  confidence: "high" | "medium" | "low";
+  realisticMonths: number | null;
+  plannedOpenDate: string | null;
+  businessCategory: BusinessCategory;
+  signals: NoteSignal[];
+  withdrawn?: string;
+  trace: TraceStep[];
+}
+
+export interface UnfilledInsight {
+  territoryId: string;
+  freeSlots: number;
+  /** Plain-language reasons the slots are still open. */
+  reasons: string[];
+  viablePins: string[];
+  blockedPins: { pin: string; reason: string }[];
+}
+
+export interface TerritoryResult {
+  id: string;
+  city: string | null;
+  tier: Tier | null;
+  priority: Priority | null;
+  openSlots: number;
+  allocated: string[];
+  freeSlots: number;
+  waitlist: string[];
+  viablePins: string[];
+  flags: Flag[];
+  insight?: UnfilledInsight;
+}
+
+export interface InvariantViolation {
+  rule: "H1" | "H2" | "H3" | "H4" | "H5" | "H6";
+  message: string;
+  ids: string[];
+}
+
+export interface InvariantResult {
+  ok: boolean;
+  violations: InvariantViolation[];
+  /** Number of allocations checked. */
+  checked: number;
+}
+
+export interface EngineResult {
+  today: string;
+  /** Input after overrides were applied. */
+  input: EngineInput;
+  decisions: Decision[];
+  decisionById: Record<string, Decision>;
+  territories: TerritoryResult[];
+  alerts: DataAlert[];
+  invariants: InvariantResult;
+  counts: Record<Status, number>;
+  readings: NoteReading[];
+}
+
+// ---- Overrides: what the user (inline edit or chat) has changed since the upload ----
+
+export type EditableAppField = Exclude<AppField, "id">;
+
+export interface Overrides {
+  applications?: Record<string, Partial<Pick<Application, EditableAppField>>>;
+  territories?: Record<string, { openSlots?: number; priority?: Priority; pins?: string[] }>;
+  /** applicantId → reason */
+  withdrawn?: Record<string, string>;
+  /** Facts that aren't a field ("has a trained optometrist"). */
+  addedSignals?: Record<string, NoteSignal[]>;
+  /** Conditions the user says are now closed, e.g. LOAN_DEPENDENT after the loan was sanctioned. */
+  resolved?: Record<string, FlagCode[]>;
 }
