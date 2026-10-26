@@ -65,6 +65,16 @@ export function closestIds(id: string, ids: string[], n = 3): string[] {
 const LOAN_SANCTIONED = /loan[^.]*(sanction|approv|clear|disburs|come through)|(sanction|approv)[^.]*loan/i;
 const POSITIVE_FACT = /(optometrist|optician|trained|experienced|already (has|have|runs?)|franchise|ready|vacant|available)/i;
 
+/** "APP-12", "app 12" and "APP-012" all mean the same applicant: match exact ID first, then by the number. */
+export function looseId(raw: string, ids: string[]): string | undefined {
+  const upper = raw.trim().toUpperCase();
+  const exact = ids.find((x) => x.toUpperCase() === upper);
+  if (exact) return exact;
+  const m = upper.match(/^([A-Z]+)[ _-]*0*(\d+)$/);
+  if (!m) return undefined;
+  return ids.find((x) => x.toUpperCase().startsWith(m[1]) && Number(x.replace(/^[A-Za-z]+[ _-]*0*(\d+).*$/, "$1")) === Number(m[2]) && !x.includes("#"));
+}
+
 export class ToolRuntime {
   overrides: Overrides;
   assumptions: Assumptions;
@@ -145,8 +155,10 @@ export class ToolRuntime {
   }
 
   getApplication(id: string) {
-    const app = this.state.input.applications.find((a) => a.id === id);
+    const appId = looseId(id, this.state.input.applications.map((a) => a.id));
+    const app = this.state.input.applications.find((a) => a.id === appId);
     if (!app) return this.unknownApp(id);
+    id = app.id;
     const r = this.compute(this.overrides, this.assumptions, { simulateFor: [id] });
     const d = r.decisionById[id];
     return {
@@ -182,8 +194,9 @@ export class ToolRuntime {
 
   compare(idA: string, idB: string) {
     const r = this.current();
-    const a = r.decisionById[idA];
-    const b = r.decisionById[idB];
+    const ids = this.state.input.applications.map((x) => x.id);
+    const a = r.decisionById[looseId(idA, ids) ?? idA];
+    const b = r.decisionById[looseId(idB, ids) ?? idB];
     if (!a) return this.unknownApp(idA);
     if (!b) return this.unknownApp(idB);
     const higher = (a.score ?? -1) >= (b.score ?? -1) ? a : b;
@@ -200,7 +213,8 @@ export class ToolRuntime {
 
   getTerritory(id: string) {
     const r = this.current();
-    const t = r.territories.find((x) => x.id.toUpperCase() === id.toUpperCase());
+    const tid = looseId(id, r.territories.map((x) => x.id));
+    const t = r.territories.find((x) => x.id === tid);
     if (!t) return { error: `There is no territory ${id}.`, didYouMean: closestIds(id, r.territories.map((x) => x.id)) };
     const wantsHere = r.decisions.filter((d) => d.ownTerritoryId === t.id || d.allocation?.territoryId === t.id);
     return {
@@ -247,7 +261,8 @@ export class ToolRuntime {
   private oneChange(c: RawChange, sourceText: string, out: Change[], skipped: string[], notes: string[]) {
     const eff = this.state.input;
     if (c.target === "territory") {
-      const t = eff.territories.find((x) => x.id.toUpperCase() === c.id.toUpperCase());
+      const tid = looseId(c.id, eff.territories.map((x) => x.id));
+      const t = eff.territories.find((x) => x.id === tid);
       if (!t) return void skipped.push(`There is no territory ${c.id}.`);
       if (c.field === "openSlots") {
         const n = Number(c.value);
@@ -264,8 +279,13 @@ export class ToolRuntime {
       } else skipped.push(`${t.id}: can't change ${c.field}.`);
       return;
     }
-    const app = eff.applications.find((a) => a.id.toUpperCase() === c.id.toUpperCase());
+    const aid = looseId(c.id, eff.applications.map((x) => x.id));
+    const app = eff.applications.find((a) => a.id === aid);
     if (!app) return void skipped.push(`There is no applicant ${c.id}.`);
+    if (c.field === "withdraw" || c.field === "withdrawn") {
+      out.push({ target: "application", id: app.id, field: "withdraw", value: String(c.value ?? "") });
+      return;
+    }
     if (c.field === "addSignal") {
       const text = String(c.value ?? "").trim();
       if (!text) return void skipped.push(`${app.id}: nothing to add.`);
@@ -339,7 +359,8 @@ export class ToolRuntime {
   }
 
   private withdraw(id: string, reason: string) {
-    const app = this.state.input.applications.find((a) => a.id.toUpperCase() === id.toUpperCase());
+    const wid = looseId(id, this.state.input.applications.map((x) => x.id));
+    const app = this.state.input.applications.find((a) => a.id === wid);
     if (!app) return this.unknownApp(id);
     const r = withdrawApplication(this.state.input, this.overrides, app.id, reason);
     if (!r) return { committed: false, note: `${app.id} is already withdrawn.` };
@@ -397,7 +418,7 @@ const changeItem = {
   properties: {
     target: { type: "string", enum: ["application", "territory"] },
     id: str("APP-012 or TER-07"),
-    field: str("Application: investmentLakh, experienceYears, business, spaceAvailable, spaceSize, floor, targetLaunchMonths, language, pin, city, notes, addSignal. Territory: openSlots, priority, pins"),
+    field: str("Application: investmentLakh, experienceYears, business, spaceAvailable, spaceSize, floor, targetLaunchMonths, language, pin, city, notes, addSignal, withdrawn (value = reason). Territory: openSlots, priority, pins"),
     value: { type: "string", description: "The new value exactly as stated. spaceAvailable: Owned, Rented, Not yet identified, or Identified (ownership unconfirmed). floor: Ground, Upper, Mall unit, Not known. For addSignal, a short sentence of the fact." },
     note: str("Optional note"),
   },

@@ -27,14 +27,14 @@ const obj = z.record(z.string(), z.unknown());
 
 const stateSchema = z.object({
   input: z.object({
-    applications: z.array(obj).max(700),
-    territories: z.array(obj).max(150),
-    existingStores: z.array(obj).max(200),
+    applications: z.array(obj).max(1200),
+    territories: z.array(obj).max(300),
+    existingStores: z.array(obj).max(400),
     excludedExamples: z.object({ applications: z.array(z.unknown()), territories: z.array(z.unknown()) }).optional(),
   }),
   overrides: obj.default({}),
   assumptions: obj.default({}),
-  readings: z.array(z.object({ id: z.string() }).passthrough()).max(700).default([]),
+  readings: z.array(z.object({ id: z.string() }).passthrough()).max(1200).default([]),
   undoTo: z.object({ overrides: obj, assumptions: obj }).nullable().optional(),
   today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
@@ -66,7 +66,7 @@ const appSource = z.object({
   business: z.string().max(2000).nullable().optional(),
   notes: z.string().max(4000).nullable().optional(),
 });
-export const extractBodySchema = z.object({ applications: z.array(appSource).max(700), today: z.string().optional() });
+export const extractBodySchema = z.object({ applications: z.array(appSource).max(1200), today: z.string().optional() });
 
 export interface ChatResponse {
   reply: string;

@@ -35,11 +35,12 @@ function resolve(raw: string, rt: ToolRuntime, kind: "APP" | "TER"): string {
 const num = (s: string | undefined) => (s === undefined ? NaN : Number(s));
 
 export function fallbackChat(message: string, rt: ToolRuntime): string {
-  const text = message.trim();
+  // "app 12", "APP012" and "TER 3" mean APP-12 and TER-3; resolve() matches them to the real IDs by number.
+  const text = message.trim().replace(/\b(APP|TER)[ _-]*0*(\d{1,4})\b/gi, (_m, k: string, n: string) => `${k.toUpperCase()}-${n}`);
   const apps = [...text.matchAll(ID)].map((m) => resolve(m[0], rt, "APP"));
   const ters = [...text.matchAll(TER)].map((m) => resolve(m[0], rt, "TER"));
   const a = apps[0];
-  const whatIf = /\b(what if|what would happen|suppose|imagine|if we|if they)\b/i.test(text) || /^if\b/i.test(text);
+  const whatIf = /\bif\b|what (would|will|happens)|suppose|imagine|hypothetical/i.test(text);
   const run = (name: string, args: Record<string, unknown>) => rt.run(name, args);
 
   if (!text) return FALLBACK_HELP;
@@ -48,8 +49,9 @@ export function fallbackChat(message: string, rt: ToolRuntime): string {
   if (/\bundo\b|\brevert\b|\broll ?back\b/i.test(text)) return replyUndo(run("undo", {}));
 
   // ---- updates and what-ifs
-  if (a && /\b(withdr(aw|ew|awn)|dropp?(ed)? out|backed out|pulled out|not interested)\b/i.test(text) && !whatIf) {
-    const reason = text.match(/\b(?:because|since)\s+(.+)$/i)?.[1];
+  if (a && /\b(withdr(aw|ew|awn|aws)|dropp?(ed|s)? out|backed out|backs out|pulled out|pulls out|not interested)\b/i.test(text)) {
+    const reason = text.match(/\b(?:because|since)\s+(?:of\s+)?(.+)$/i)?.[1];
+    if (whatIf) return replyUpdate(run("what_if", { changes: [{ target: "application", id: a, field: "withdrawn", value: reason ?? "" }], sourceText: text }), { whatIf });
     return replyUpdate(run("withdraw", { id: a, reason: reason ?? "" }));
   }
   if (a && /\bloan\b/i.test(text) && /(sanction|approv|cleared|come through|disburs)/i.test(text)) {
@@ -63,6 +65,17 @@ export function fallbackChat(message: string, rt: ToolRuntime): string {
       : run("update_territory", { id: ters[0], changes: { openSlots: slots[1] }, sourceText: text });
     return replyUpdate(x, { whatIf });
   }
+  const priority = ters[0] ? text.match(/\bpriority\b[^.]*?\b(high|medium|low)\b/i) : null;
+  if (ters[0] && priority) {
+    const changes = [{ target: "territory", id: ters[0], field: "priority", value: priority[1] }];
+    return replyUpdate(run(whatIf ? "what_if" : "apply_update", { changes, sourceText: text }), { whatIf });
+  }
+  const addPin = ters[0] ? text.match(/\b(?:add|include)\b[^.]*?\b(5\d{5})\b/i) : null;
+  if (ters[0] && addPin) {
+    const have = rt.current().input.territories.find((t) => t.id === ters[0])?.pins ?? [];
+    const changes = [{ target: "territory", id: ters[0], field: "pins", value: [...new Set([...have, addPin[1]])].join(", ") }];
+    return replyUpdate(run(whatIf ? "what_if" : "apply_update", { changes, sourceText: text }), { whatIf });
+  }
   const catchment = text.match(/tier\s*([123])[^.]*catchment[^.]*?(?:to|=|at)\s*(\d+(?:\.\d+)?)\s*km/i);
   if (catchment) return replyAssumption(run("set_assumption", { key: `catchmentKm.${catchment[1]}`, value: num(catchment[2]) }));
   const approve = text.match(/approv\w*\s*(?:threshold|score)?[^.]*?(?:to|=|at)\s*(\d{2,3})\b/i);
@@ -73,13 +86,13 @@ export function fallbackChat(message: string, rt: ToolRuntime): string {
     const invest = text.match(/(?:invest\w*|capacity|budget|put in|afford)[^.\d]*?(?:is|of|to|at|actually|only|about|around)?\s*₹?\s*(\d+(?:\.\d+)?)\s*(lakh|lakhs|lac|l\b)?/i);
     if (invest && /(invest|capacity|budget|put in|afford)/i.test(text)) changes.push({ target: "application", id: a, field: "investmentLakh", value: num(invest[1]) });
     const floor = text.match(/\b(ground|upper|first|mall)[- ]?(?:floor|unit)?/i);
-    const foundSpace = /(found|got|secured|has now|now has|moved|identified|signed|taken|rented|bought|new (space|shop|unit))/i.test(text);
+    const foundSpace = /(found|got|secured|has now|now has|moved|identified|signed|taken|rented|rents|bought|owns?|owned|leased?|new (space|shop|unit))/i.test(text);
     if (floor && foundSpace) {
       const f = floor[1].toLowerCase();
       changes.push({ target: "application", id: a, field: "floor", value: f === "ground" ? "Ground" : f === "mall" ? "Mall unit" : "Upper" });
       const cur = rt.state.input.applications.find((x) => x.id === a);
       const eff = rt.current().input.applications.find((x) => x.id === a) ?? cur;
-      if (/\bown(ed)?\b/i.test(text)) changes.push({ target: "application", id: a, field: "spaceAvailable", value: "Owned" });
+      if (/\b(own(s|ed)?)\b/i.test(text)) changes.push({ target: "application", id: a, field: "spaceAvailable", value: "Owned" });
       else if (/\b(rent(ed)?|lease[ds]?)\b/i.test(text)) changes.push({ target: "application", id: a, field: "spaceAvailable", value: "Rented" });
       else if (!eff?.spaceAvailable || eff.spaceAvailable === "Not yet identified") changes.push({ target: "application", id: a, field: "spaceAvailable", value: "Identified (ownership unconfirmed)" });
     } else if (foundSpace && /\b(space|shop|unit|premises|site)\b/i.test(text) && !invest) {
@@ -90,7 +103,7 @@ export function fallbackChat(message: string, rt: ToolRuntime): string {
     if (size && (foundSpace || floor || /size|space/i.test(text))) changes.push({ target: "application", id: a, field: "spaceSize", value: num(size[1]) });
     const target = text.match(/target[^.\d]*(\d{1,2})\s*months?/i);
     if (target) changes.push({ target: "application", id: a, field: "targetLaunchMonths", value: num(target[1]) });
-    const exp = text.match(/(\d{1,2})\s*years?\s*(?:of\s*)?(?:retail\s*)?experience/i);
+    const exp = text.match(/(\d{1,2})\s*years?\s*(?:of\s*)?(?:retail\s*)?experience/i) ?? text.match(/experience[^.\d]*?(?:is|of|to|at|now)?\s*(\d{1,2})\s*years?/i);
     if (exp && !/\bwhy\b/i.test(text)) changes.push({ target: "application", id: a, field: "experienceYears", value: num(exp[1]) });
     if (changes.length && (!/^(why|how|what does|what's|who|which|explain|tell me)\b/i.test(text) || whatIf)) {
       return replyUpdate(run(whatIf ? "what_if" : "apply_update", { changes, sourceText: text }), { whatIf });

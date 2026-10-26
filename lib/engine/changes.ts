@@ -21,6 +21,7 @@ export type Change =
   | { target: "application"; id: string; field: EditableAppField; value: Application[EditableAppField]; note?: string }
   | { target: "application"; id: string; field: "addSignal"; value: NoteSignal; note?: string }
   | { target: "application"; id: string; field: "resolve"; value: FlagCode; note?: string }
+  | { target: "application"; id: string; field: "withdraw"; value: string; note?: string }
   | { target: "territory"; id: string; field: "openSlots"; value: number; note?: string }
   | { target: "territory"; id: string; field: "priority"; value: Priority; note?: string }
   | { target: "territory"; id: string; field: "pins"; value: string[]; note?: string };
@@ -40,6 +41,7 @@ export const FIELD_LABEL: Record<string, string> = {
   language: "Preferred language",
   notes: "Notes",
   addSignal: "Added fact",
+  withdraw: "Status",
   resolve: "Condition closed",
   openSlots: "Open slots",
   priority: "Priority",
@@ -139,8 +141,9 @@ export function applyChange(
       ...overrides,
       addedSignals: { ...(overrides.addedSignals ?? {}), [change.id]: [...(overrides.addedSignals?.[change.id] ?? []), change.value] },
     };
-    return { overrides: next, diff: { target: "application", id: change.id, field: "addSignal", label, from: "—", to: change.value.text } };
+    return { overrides: next, diff: { target: "application", id: change.id, field: "addSignal", label, from: "none", to: change.value.text } };
   }
+  if (change.field === "withdraw") return withdrawApplication(input, overrides, change.id, change.value);
   if (change.field === "resolve") {
     if (overrides.resolved?.[change.id]?.includes(change.value)) return null;
     const next: Overrides = {

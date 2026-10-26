@@ -24,7 +24,7 @@ export function TopBar() {
     try {
       let full = s.result;
       try {
-        full = runEngine(s.input, s.assumptions, s.overrides, { today: s.today, simulate: true, throwOnViolation: false });
+        full = runEngine(s.input, s.assumptions, s.overrides, { today: s.today, simulate: true, throwOnViolation: false, ...(s.readings ? { readings: s.readings } : {}) });
       } catch {
         /* fall back to the on-screen results */
       }
