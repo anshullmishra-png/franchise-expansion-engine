@@ -55,15 +55,24 @@ function ApplicantPanel({ id }: { id: string }) {
   const [tab, setTab] = useState<DrawerTab>("decision");
   const base = s.result!.decisionById[id];
 
-  // The table is computed without "what would change it"; for the one applicant on screen we run it.
-  const d: Decision = useMemo(() => {
-    if (!s.input) return base;
-    try {
-      return runEngine(s.input, s.assumptions, s.overrides, { today: s.today, simulate: true, simulateFor: [id], throwOnViolation: false }).decisionById[id] ?? base;
-    } catch {
-      return base;
-    }
-  }, [s.input, s.assumptions, s.overrides, s.today, id, base]);
+  // The table is computed without "what would change it". For the one applicant on screen we work it out right
+  // after the drawer opens, so a big file never delays the drawer itself.
+  const [deep, setDeep] = useState<{ key: string; decision: Decision } | null>(null);
+  const deepKey = `${id}|${JSON.stringify(s.overrides)}|${JSON.stringify(s.assumptions)}|${s.input?.applications.length}`;
+  useEffect(() => {
+    if (!s.input || deep?.key === deepKey) return;
+    const input = s.input;
+    const timer = setTimeout(() => {
+      try {
+        const out = runEngine(input, s.assumptions, s.overrides, { today: s.today, simulate: true, simulateFor: [id], throwOnViolation: false, ...(s.readings ? { readings: s.readings } : {}) }).decisionById[id];
+        if (out) setDeep({ key: deepKey, decision: out });
+      } catch {
+        /* keep showing the quick version */
+      }
+    }, 30);
+    return () => clearTimeout(timer);
+  }, [deepKey, deep, id, s.input, s.assumptions, s.overrides, s.today, s.readings]);
+  const d: Decision = deep?.key === deepKey ? deep.decision : base;
 
   const area = d.pin ? getPin(d.pin)?.area : null;
   const tabs: [DrawerTab, string][] = [["decision", "Decision"], ["plan", "Plan & message"], ["edit", "Edit & history"]];
