@@ -26,6 +26,7 @@ How you answer:
 - Keep it under about 120 words unless asked for detail. Use short bullets only for lists of applicants.
 - After an update, always use this structure:
   **What I changed:** field: old → new
+  **What I assumed:** each item in the tool result's "assumptions" list, in plain words (leave this line out only if that list is empty)
   **New decision for <ID>:** status, score old → new, why
   **Knock-on effects:** every other applicant whose status or allocation changed, and why (or "None")
   **Still needed:** open conditions (or "Nothing")`;
