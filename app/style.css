@@ -123,3 +123,32 @@
     transform: none;
   }
 }
+
+/* Leaflet map: softened tiles to sit on the paper palette, and our own marker shapes (no default image icons). */
+.leaflet-container {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  background: #e6f1ef;
+}
+.leaflet-tile-pane {
+  filter: grayscale(0.4) saturate(0.7) contrast(0.95);
+}
+.store-sq {
+  width: 14px;
+  height: 14px;
+  background: #0f172a;
+  border: 2px solid #fff;
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.45);
+}
+.arrow-tip svg {
+  display: block;
+  transform-origin: 50% 50%;
+}
+.leaflet-tooltip {
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+  box-shadow: 0 12px 40px -8px rgba(15, 23, 42, 0.22);
+  font-size: 12px;
+  font-weight: 500;
+}
