@@ -140,6 +140,7 @@ export class ToolRuntime {
       applicants: r.decisions.length,
       counts: r.counts,
       placementRules: r.invariants.ok ? "All 6 placement rules verified" : "VIOLATED",
+      newStoresOnExistingStorePins: this.storeConflicts(),
       territories: r.territories.map((t) => ({
         id: t.id, city: t.city, tier: t.tier, priority: t.priority, openSlots: t.openSlots, filled: t.allocated.length, free: t.freeSlots,
         allocated: t.allocated, waitlist: t.waitlist, whyUnfilled: t.insight?.reasons,
@@ -426,7 +427,7 @@ const changeItem = {
 };
 
 export const TOOL_DECLARATIONS = [
-  { name: "get_overview", description: "Counts by status, slots per territory, unfilled-slot reasons, data alerts, and applications on hold.", parametersJsonSchema: { type: "object", properties: {} } },
+  { name: "get_overview", description: "Counts by status, slots per territory, unfilled-slot reasons, data alerts, applications on hold, and any planned store on a pin that already has a store (empty list means none). Call this first for network-wide questions.", parametersJsonSchema: { type: "object", properties: {} } },
   { name: "get_application", description: "Everything about one applicant: decision, why, score breakdown, competitors, conditions, payback, next steps, training plan, what would change the decision, and the raw row.", parametersJsonSchema: { type: "object", properties: { id: str("Application ID, e.g. APP-012") }, required: ["id"] } },
   { name: "compare", description: "Compare two applicants component by component and say who wins what.", parametersJsonSchema: { type: "object", properties: { idA: str("First application ID"), idB: str("Second application ID") }, required: ["idA", "idB"] } },
   { name: "get_territory", description: "A territory's slots, who holds them, who is waiting, viable pins left and why slots are unfilled.", parametersJsonSchema: { type: "object", properties: { id: str("Territory ID, e.g. TER-07") }, required: ["id"] } },

@@ -116,6 +116,7 @@ describe("tool runtime: the model's calls are checked, never trusted", () => {
   it("reads: overview, list and territory carry what the model needs", () => {
     const r = rt();
     expect((r.run("get_overview", {}) as R).counts.HOLD).toBe(4);
+    expect((r.run("get_overview", {}) as R).newStoresOnExistingStorePins).toEqual([]);
     expect((r.run("list_applications", { status: "hold" }) as R).count).toBe(4);
     expect((r.run("list_applications", { territoryId: "ter-07" }) as R).applicants.length).toBeGreaterThan(1);
     expect((r.run("list_applications", { city: "mysuru" }) as R).count).toBeGreaterThan(3);
