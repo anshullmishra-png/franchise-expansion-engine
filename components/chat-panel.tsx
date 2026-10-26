@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageSquare, PanelRightClose, PanelRightOpen, Send } from "lucide-react";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { MessageSquareDot, Send, Sparkles, X } from "lucide-react";
 import { RichText } from "@/components/rich-text";
 import { useStore } from "@/lib/state/store";
 
@@ -13,14 +12,22 @@ export const SUGGESTED_QUESTIONS = [
   "APP-012 has now found a ground-floor space",
 ];
 
-function ChatBody() {
+function ChatBody({ open }: { open: boolean }) {
   const s = useStore();
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [s.chat.length, s.chatBusy]);
+
+  // Put the cursor in the box as soon as the panel slides in.
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 220);
+    return () => clearTimeout(t);
+  }, [open]);
 
   function send(t: string) {
     const q = t.trim();
@@ -31,42 +38,65 @@ function ChatBody() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3" aria-live="polite">
+      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4" aria-live="polite">
         {s.chat.length === 0 ? (
-          <p className="text-[13px] leading-relaxed text-ink-400">
-            Ask why an applicant got their decision, compare two applicants, or tell the engine something new, like &ldquo;APP-012 has now found a ground-floor space&rdquo;. Every answer comes from
-            the rules engine, with the numbers.
-          </p>
+          <div className="rise-in">
+            <p className="text-[14px] leading-relaxed text-ink-300">
+              Ask why an applicant got their decision, compare two applicants, or tell the engine something new. Every answer comes from the rules engine, with the numbers.
+            </p>
+            <p className="tracky mt-6 mb-2.5 text-[11px] font-bold text-ink-500 uppercase">Try one</p>
+            <div className="space-y-2">
+              {SUGGESTED_QUESTIONS.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  disabled={s.chatBusy}
+                  onClick={() => send(q)}
+                  className="spotlight spotlight-dark press flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[.04] px-3.5 py-3 text-left text-[13.5px] text-ink-200 disabled:opacity-50"
+                >
+                  <Sparkles className="size-4 shrink-0 text-teal-400" aria-hidden />
+                  <span className="relative">{q}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         ) : (
           s.chat.map((m) => (
-            <div key={m.id} className={`max-w-[94%] rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed ${m.role === "user" ? "ml-auto bg-teal-700 text-white" : "bg-white/[.06] text-ink-100 ring-1 ring-white/10"}`}>
+            <div key={m.id} className={`rise-in max-w-[94%] rounded-2xl px-4 py-3 text-[13.5px] leading-relaxed ${m.role === "user" ? "ml-auto bg-teal-700 text-white" : "bg-white/[.06] text-ink-100 ring-1 ring-white/10"}`}>
               {m.role === "assistant" ? <RichText text={m.text} /> : m.text}
-              {m.role === "assistant" && m.rulesOnly ? <span className="mt-1 block text-[11px] text-ink-400">Rules-only answer</span> : null}
+              {m.role === "assistant" && m.rulesOnly ? <span className="mt-1.5 block text-[11px] text-ink-400">Rules-only answer</span> : null}
             </div>
           ))
         )}
         {s.chatBusy ? (
-          <div className="max-w-[94%] rounded-xl bg-white/[.06] px-3.5 py-2.5 text-[13px] text-ink-400 ring-1 ring-white/10" role="status">
+          <div className="inline-flex items-center gap-2 rounded-2xl bg-white/[.06] px-4 py-3 text-[13px] text-ink-400 ring-1 ring-white/10" role="status">
+            <span className="flex gap-1" aria-hidden>
+              <span className="size-1.5 animate-bounce rounded-full bg-teal-400 [animation-delay:-0.3s]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-teal-400 [animation-delay:-0.15s]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-teal-400" />
+            </span>
             Checking the engine…
           </div>
         ) : null}
         <div ref={endRef} />
       </div>
 
-      <div className="border-t border-white/10 px-3 py-3">
-        <div className="mb-2.5 flex flex-wrap gap-1.5">
-          {SUGGESTED_QUESTIONS.map((q) => (
-            <button
-              key={q}
-              type="button"
-              disabled={s.chatBusy}
-              onClick={() => send(q)}
-              className="rounded-full border border-white/10 px-2.5 py-1 text-left text-xs text-ink-300 hover:bg-white/5 hover:text-white disabled:opacity-50"
-            >
-              {q}
-            </button>
-          ))}
-        </div>
+      <div className="border-t border-white/10 px-4 py-3.5">
+        {s.chat.length > 0 ? (
+          <div className="no-scrollbar -mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1">
+            {SUGGESTED_QUESTIONS.map((q) => (
+              <button
+                key={q}
+                type="button"
+                disabled={s.chatBusy}
+                onClick={() => send(q)}
+                className="press shrink-0 rounded-full border border-white/10 px-3 py-1.5 text-xs text-ink-300 hover:border-teal-500/50 hover:bg-white/5 hover:text-white disabled:opacity-50"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <form
           className="flex gap-2"
           onSubmit={(e) => {
@@ -75,13 +105,14 @@ function ChatBody() {
           }}
         >
           <input
+            ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Ask about an applicant or territory…"
             aria-label="Message the engine"
-            className="field h-10 min-w-0 flex-1 rounded-lg px-3 text-[14px]"
+            className="field h-11 min-w-0 flex-1 rounded-xl px-3.5 text-[14px]"
           />
-          <button type="submit" aria-label="Send" disabled={!text.trim() || s.chatBusy} className="submit-btn grid size-10 shrink-0 place-items-center rounded-lg">
+          <button type="submit" aria-label="Send" title="Send" disabled={!text.trim() || s.chatBusy} className="submit-btn grid size-11 shrink-0 place-items-center rounded-xl">
             <Send className="size-4" />
           </button>
         </form>
@@ -90,53 +121,69 @@ function ChatBody() {
   );
 }
 
-/** Desktop: a collapsible column on the right. Phone: a button that opens a bottom sheet. */
+/**
+ * The chat is a slide-over from the right. It doesn't dim or block the page, so you can watch decisions change
+ * behind it. Open it with the Ask button or Ctrl/Cmd+K; close it with Esc or the X.
+ */
 export function ChatPanel() {
   const s = useStore();
-  const [sheet, setSheet] = useState(false);
+  const open = s.chatOpen;
+  const { setChatOpen } = s;
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setChatOpen(!open);
+      } else if (e.key === "Escape" && open) {
+        setChatOpen(false);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, setChatOpen]);
 
   return (
     <>
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setChatOpen(true)}
+          className="submit-btn press fixed right-5 bottom-5 z-40 flex items-center gap-2.5 rounded-full py-3 pr-4 pl-4 text-[14px] font-bold shadow-pop"
+          aria-label="Open chat"
+        >
+          <MessageSquareDot className="size-[18px]" aria-hidden /> Ask the engine
+          <kbd className="ml-1 rounded-md bg-white/15 px-1.5 py-0.5 font-sans text-[11px] font-semibold max-md:hidden">Ctrl K</kbd>
+        </button>
+      ) : null}
+
       <aside
-        className={`dark-rail hidden shrink-0 flex-col border-l border-ink-800 bg-ink-950 text-ink-100 transition-[width] lg:flex ${s.chatOpen ? "w-[24rem]" : "w-11"}`}
+        data-open={open}
         aria-label="Ask the engine"
+        aria-hidden={!open}
+        inert={!open}
+        className={`slide-over dark-rail fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-ink-800 bg-ink-950 text-ink-100 shadow-pop sm:w-[26rem] ${open ? "translate-x-0" : "invisible translate-x-full"}`}
       >
-        <div className="flex items-center gap-2 border-b border-white/10 px-2 py-3">
+        <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-teal-700/30 text-teal-300" aria-hidden>
+            <MessageSquareDot className="size-[18px]" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="tracky text-[12px] font-bold text-white uppercase">Ask the engine</h2>
+            <p className="truncate text-xs text-ink-400">Answers come from the rules, with the numbers</p>
+          </div>
           <button
             type="button"
-            onClick={() => s.setChatOpen(!s.chatOpen)}
-            aria-label={s.chatOpen ? "Collapse chat" : "Open chat"}
-            className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/5 text-ink-300 hover:bg-teal-700 hover:text-white"
+            onClick={() => setChatOpen(false)}
+            aria-label="Close chat"
+            title="Close (Esc)"
+            className="press grid size-9 shrink-0 place-items-center rounded-lg text-ink-300 hover:bg-white/10 hover:text-white"
           >
-            {s.chatOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+            <X className="size-[18px]" />
           </button>
-          {s.chatOpen ? (
-            <div className="min-w-0">
-              <h2 className="tracky text-[12px] font-bold text-white uppercase">Ask the engine</h2>
-              <p className="truncate text-xs text-ink-400">Answers come from the rules, with the numbers</p>
-            </div>
-          ) : null}
         </div>
-        {s.chatOpen ? <ChatBody /> : null}
+        <ChatBody open={open} />
       </aside>
-
-      <button
-        type="button"
-        onClick={() => setSheet(true)}
-        className="submit-btn fixed right-4 bottom-4 z-30 flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold lg:hidden"
-        aria-label="Open chat"
-      >
-        <MessageSquare className="size-4" /> Ask
-      </button>
-      <Sheet open={sheet} onOpenChange={setSheet}>
-        <SheetContent side="bottom" className="dark-rail h-[80dvh] border-ink-800 bg-ink-950 text-ink-100">
-          <SheetHeader>
-            <SheetTitle className="tracky text-[12px] font-bold text-white uppercase">Ask the engine</SheetTitle>
-            <SheetDescription className="text-ink-400">Answers come from the rules, with the numbers.</SheetDescription>
-          </SheetHeader>
-          <ChatBody />
-        </SheetContent>
-      </Sheet>
     </>
   );
 }

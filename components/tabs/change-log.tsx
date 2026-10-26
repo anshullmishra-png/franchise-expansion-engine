@@ -41,9 +41,14 @@ export function ChangeLogTab() {
   }
 
   return (
-    <ol className="space-y-3">
+    <div className="space-y-4">
+    <div className="rise-in">
+      <h2 className="text-2xl font-extrabold tracking-tight text-ink-900">Change log</h2>
+      <p className="mt-1.5 text-[15px] text-ink-600">Every edit and what it moved, newest first. Undo the latest to step back.</p>
+    </div>
+    <ol className="space-y-4">
       {s.log.map((e) => (
-        <li key={e.id} className={`rounded-2xl border border-ink-200 bg-card p-4 shadow-card ${e.undone ? "opacity-60" : ""}`}>
+        <li key={e.id} className={`spotlight rounded-2xl border border-ink-200 bg-card p-5 shadow-card ${e.undone ? "opacity-60" : ""}`}>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand">{e.source}</span>
             <time className="text-xs text-muted-foreground" dateTime={e.at}>{new Date(e.at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
@@ -83,5 +88,6 @@ export function ChangeLogTab() {
         </li>
       ))}
     </ol>
+    </div>
   );
 }
