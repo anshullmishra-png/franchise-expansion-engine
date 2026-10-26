@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Download, FileDown, FileSpreadsheet, FlaskConical, MapPinned, RotateCcw, SlidersHorizontal, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RulesBadge } from "@/components/rules-badge";
-import { downloadExport } from "@/lib/export";
+import { downloadExport, EXPORT_FILE_NAME } from "@/lib/export";
 import { runEngine } from "@/lib/engine";
 import { useStore } from "@/lib/state/store";
 
@@ -16,19 +16,26 @@ export function TopBar() {
   const [exporting, setExporting] = useState(false);
   const hasData = !!s.result;
 
-  async function doExport() {
+  const [exportUrl, setExportUrl] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  useEffect(() => () => { if (exportUrl) URL.revokeObjectURL(exportUrl); }, [exportUrl]);
+
+  // Runs straight from the click (no await before the download) so browsers don't treat it as a pop-up and block it.
+  function doExport() {
     if (!s.result || !s.input) return;
     setExporting(true);
-    // Let the button repaint before the (slightly heavier) full run with "what would change it" for everyone.
-    await new Promise((r) => setTimeout(r, 30));
+    setExportError(null);
     try {
       let full = s.result;
       try {
+        // The full run adds "what would change it" for everyone.
         full = runEngine(s.input, s.assumptions, s.overrides, { today: s.today, simulate: true, throwOnViolation: false, ...(s.readings ? { readings: s.readings } : {}) });
       } catch {
         /* fall back to the on-screen results */
       }
-      downloadExport(full);
+      setExportUrl(downloadExport(full));
+    } catch (e) {
+      setExportError(e instanceof Error && e.message ? e.message : "Something went wrong while building the file.");
     } finally {
       setExporting(false);
     }
@@ -64,7 +71,7 @@ export function TopBar() {
           <Button variant="outline" size="sm" className={outline} onClick={() => s.setAssumptionsOpen(true)}>
             <SlidersHorizontal /> <span className="max-sm:sr-only">Assumptions</span>
           </Button>
-          <Button variant="outline" size="sm" className={outline} onClick={() => void doExport()} disabled={!hasData || exporting}>
+          <Button variant="outline" size="sm" className={outline} onClick={doExport} disabled={!hasData || exporting}>
             {exporting ? <FileSpreadsheet className="animate-pulse" /> : <Download />} <span className="max-sm:sr-only">{exporting ? "Preparing…" : "Export (.xlsx)"}</span>
           </Button>
           <Button variant="ghost" size="sm" className="text-ink-600" onClick={() => setConfirmOpen(true)} disabled={!s.input && s.log.length === 0}>
@@ -101,6 +108,16 @@ export function TopBar() {
         >
           <SlidersHorizontal className="size-3" aria-hidden /> Assumptions
         </button>
+        {exportUrl ? (
+          <a href={exportUrl} download={EXPORT_FILE_NAME} className="text-xs font-medium text-teal-700 underline underline-offset-2">
+            Export ready. If it didn&rsquo;t download, click here.
+          </a>
+        ) : null}
+        {exportError ? (
+          <span role="alert" className="text-xs text-rejected-ink">
+            Couldn&rsquo;t build the export: {exportError}
+          </span>
+        ) : null}
         <span className="ml-auto text-xs text-ink-500 max-sm:hidden">Saved in this browser only</span>
       </div>
 

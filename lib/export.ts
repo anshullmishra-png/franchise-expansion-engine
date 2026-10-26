@@ -87,8 +87,10 @@ export function exportToBytes(result: EngineResult): Uint8Array {
   return new Uint8Array(XLSX.write(buildExportWorkbook(result), { type: "array", bookType: "xlsx" }) as ArrayBuffer);
 }
 
-/** Browser only: save the workbook as a file. */
-export function downloadExport(result: EngineResult, fileName = "franchise-expansion-decisions.xlsx"): void {
+export const EXPORT_FILE_NAME = "franchise-expansion-decisions.xlsx";
+
+/** Browser only: build the workbook and start the download. Returns the blob URL so the page can offer a manual link if the browser blocks the automatic download. */
+export function downloadExport(result: EngineResult, fileName = EXPORT_FILE_NAME): string {
   const bytes = exportToBytes(result);
   const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(blob);
@@ -98,5 +100,5 @@ export function downloadExport(result: EngineResult, fileName = "franchise-expan
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return url;
 }
