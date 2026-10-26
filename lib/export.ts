@@ -73,25 +73,30 @@ export function territoryRows(result: EngineResult) {
   }));
 }
 
-export function buildExportWorkbook(result: EngineResult): XLSX.WorkBook {
+/** The "what would change it" column re-runs the whole engine for every applicant who isn't moving forward, which grows very fast (about 4 s at 200 applicants, minutes at 1000). Above this size the export leaves it blank. */
+export const EXPORT_SIMULATE_MAX = 120;
+export const WHAT_WOULD_CHANGE_SKIPPED = `The "What would change it" column is left blank in exports of more than ${EXPORT_SIMULATE_MAX} applicants. Open an applicant in the app to see what would change their decision.`;
+
+export function buildExportWorkbook(result: EngineResult, opts: { whatWouldChangeSkipped?: boolean } = {}): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
   const decisions = XLSX.utils.json_to_sheet(decisionRows(result));
   decisions["!cols"] = [{ wch: 12 }, { wch: 22 }, { wch: 16 }, { wch: 10 }, { wch: 22 }, { wch: 10 }, { wch: 12 }, { wch: 50 }, ...Array(10).fill({ wch: 12 }), { wch: 90 }];
   const territories = XLSX.utils.json_to_sheet(territoryRows(result));
   XLSX.utils.book_append_sheet(wb, decisions, "Decisions");
   XLSX.utils.book_append_sheet(wb, territories, "Territories");
+  if (opts.whatWouldChangeSkipped) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Note"], [WHAT_WOULD_CHANGE_SKIPPED]]), "Notes");
   return wb;
 }
 
-export function exportToBytes(result: EngineResult): Uint8Array {
-  return new Uint8Array(XLSX.write(buildExportWorkbook(result), { type: "array", bookType: "xlsx" }) as ArrayBuffer);
+export function exportToBytes(result: EngineResult, opts: { whatWouldChangeSkipped?: boolean } = {}): Uint8Array {
+  return new Uint8Array(XLSX.write(buildExportWorkbook(result, opts), { type: "array", bookType: "xlsx" }) as ArrayBuffer);
 }
 
 export const EXPORT_FILE_NAME = "franchise-expansion-decisions.xlsx";
 
 /** Browser only: build the workbook and start the download. Returns the blob URL so the page can offer a manual link if the browser blocks the automatic download. */
-export function downloadExport(result: EngineResult, fileName = EXPORT_FILE_NAME): string {
-  const bytes = exportToBytes(result);
+export function downloadExport(result: EngineResult, opts: { whatWouldChangeSkipped?: boolean } = {}, fileName = EXPORT_FILE_NAME): string {
+  const bytes = exportToBytes(result, opts);
   const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

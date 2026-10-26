@@ -5,7 +5,7 @@ import { ArrowRight, Download, FileDown, FileSpreadsheet, FlaskConical, MapPinne
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RulesBadge } from "@/components/rules-badge";
-import { downloadExport, EXPORT_FILE_NAME } from "@/lib/export";
+import { downloadExport, EXPORT_FILE_NAME, EXPORT_SIMULATE_MAX, WHAT_WOULD_CHANGE_SKIPPED } from "@/lib/export";
 import { runEngine } from "@/lib/engine";
 import { useStore } from "@/lib/state/store";
 
@@ -18,6 +18,7 @@ export function TopBar() {
 
   const [exportUrl, setExportUrl] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportNote, setExportNote] = useState<string | null>(null);
   useEffect(() => () => { if (exportUrl) URL.revokeObjectURL(exportUrl); }, [exportUrl]);
 
   // Runs straight from the click (no await before the download) so browsers don't treat it as a pop-up and block it.
@@ -27,13 +28,17 @@ export function TopBar() {
     setExportError(null);
     try {
       let full = s.result;
-      try {
-        // The full run adds "what would change it" for everyone.
-        full = runEngine(s.input, s.assumptions, s.overrides, { today: s.today, simulate: true, throwOnViolation: false, ...(s.readings ? { readings: s.readings } : {}) });
-      } catch {
-        /* fall back to the on-screen results */
+      // The full run adds "what would change it" for everyone, which is only quick for smaller files.
+      const skipWhatWouldChange = s.input.applications.length > EXPORT_SIMULATE_MAX;
+      if (!skipWhatWouldChange) {
+        try {
+          full = runEngine(s.input, s.assumptions, s.overrides, { today: s.today, simulate: true, throwOnViolation: false, ...(s.readings ? { readings: s.readings } : {}) });
+        } catch {
+          /* fall back to the on-screen results */
+        }
       }
-      setExportUrl(downloadExport(full));
+      setExportNote(skipWhatWouldChange ? WHAT_WOULD_CHANGE_SKIPPED : null);
+      setExportUrl(downloadExport(full, { whatWouldChangeSkipped: skipWhatWouldChange }));
     } catch (e) {
       setExportError(e instanceof Error && e.message ? e.message : "Something went wrong while building the file.");
     } finally {
@@ -113,6 +118,7 @@ export function TopBar() {
             Export ready. If it didn&rsquo;t download, click here.
           </a>
         ) : null}
+        {exportNote ? <span className="text-xs text-ink-500">{exportNote}</span> : null}
         {exportError ? (
           <span role="alert" className="text-xs text-rejected-ink">
             Couldn&rsquo;t build the export: {exportError}

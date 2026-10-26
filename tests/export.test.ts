@@ -42,6 +42,11 @@ describe("Excel export", () => {
     expect(XLSX.utils.sheet_to_json(wb.Sheets.Decisions)).toHaveLength(34);
     expect(XLSX.utils.sheet_to_json(wb.Sheets.Territories)).toHaveLength(12);
   });
+  it("adds a Notes sheet when the slow what-would-change column was left out", () => {
+    const wb = XLSX.read(exportToBytes(result, { whatWouldChangeSkipped: true }), { type: "array" });
+    expect(wb.SheetNames).toEqual(["Decisions", "Territories", "Notes"]);
+    expect(JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets.Notes))).toMatch(/left blank/);
+  });
   it("exports an empty result without crashing", () => {
     const empty = runEngine({ ...parsed.input, applications: [], territories: [] }, undefined, undefined, { today: "2026-10-25" });
     expect(() => exportToBytes(empty)).not.toThrow();
