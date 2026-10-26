@@ -76,12 +76,12 @@ export function createGeminiClient(config: AiConfig): AiClient | null {
         },
       });
       const calls = (res.functionCalls ?? []).filter((c) => !!c.name).map((c) => ({ name: c.name as string, args: (c.args ?? {}) as Record<string, unknown> }));
-      let text = "";
-      try {
-        text = res.text ?? "";
-      } catch {
-        text = "";
-      }
+      // Read the text parts directly: the SDK's `.text` getter logs a warning whenever the reply also holds a tool call.
+      const parts = res.candidates?.[0]?.content?.parts ?? [];
+      const text = parts
+        .filter((p) => typeof p.text === "string" && !p.thought)
+        .map((p) => p.text as string)
+        .join("");
       return { text, functionCalls: calls, modelContent: res.candidates?.[0]?.content };
     } finally {
       clearTimeout(timer);
