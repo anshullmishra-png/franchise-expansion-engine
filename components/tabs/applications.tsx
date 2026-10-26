@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScoreBar, STATUS_META, StatusChip } from "@/components/status";
@@ -22,7 +22,7 @@ function SortHead({ label, k, sort, onSort, className }: { label: string; k: Sor
   const Icon = !active ? ArrowUpDown : sort.dir === 1 ? ArrowUp : ArrowDown;
   return (
     <TableHead className={className} aria-sort={active ? (sort.dir === 1 ? "ascending" : "descending") : "none"}>
-      <button type="button" onClick={() => onSort(k)} className="inline-flex items-center gap-1 font-medium hover:text-foreground">
+      <button type="button" onClick={() => onSort(k)} className="press inline-flex items-center gap-1 rounded px-1 py-0.5 font-medium hover:bg-ink-100 hover:text-foreground">
         {label} <Icon className={`size-3 ${active ? "" : "opacity-40"}`} aria-hidden />
       </button>
     </TableHead>
@@ -71,11 +71,15 @@ export function ApplicationsTab() {
   const onSort = (key: SortKey) => setSort((p) => (p.key === key ? { key, dir: (p.dir * -1) as 1 | -1 } : { key, dir: key === "score" ? -1 : 1 }));
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4">
+      <div className="rise-in">
+        <h2 className="text-2xl font-extrabold tracking-tight text-ink-900">Applications</h2>
+        <p className="mt-1.5 text-[15px] text-ink-600">Click any row to see the decision, the reasoning, next steps and the training plan.</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2.5">
         <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search ID, name, city, pin, area…" aria-label="Search applications" className="pl-8" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search ID, name, city, pin, area…" aria-label="Search applications" className="h-9 pl-8" />
         </div>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by status">
           {STATUSES.map((st) => {
@@ -87,7 +91,7 @@ export function ApplicationsTab() {
                 type="button"
                 aria-pressed={on}
                 onClick={() => toggleStatus(st)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${on ? `${m.chip} border-transparent` : "text-muted-foreground hover:bg-muted"}`}
+                className={`press inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${on ? `${m.chip} border-transparent` : "text-muted-foreground hover:bg-muted"}`}
               >
                 <span className={`size-2 rounded-full ${m.dot}`} aria-hidden />
                 {m.label} <span className="tabular-nums opacity-70">{r.counts[st]}</span>
@@ -95,7 +99,7 @@ export function ApplicationsTab() {
             );
           })}
           {s.statusFilter.length || q ? (
-            <button type="button" onClick={() => { s.setStatusFilter([]); setQ(""); }} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-muted-foreground hover:bg-muted">
+            <button type="button" onClick={() => { s.setStatusFilter([]); setQ(""); }} className="press inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted">
               <X className="size-3" aria-hidden /> Clear
             </button>
           ) : null}
@@ -104,7 +108,7 @@ export function ApplicationsTab() {
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-ink-200 bg-card shadow-card">
-        <Table className="min-w-[60rem]">
+        <Table className="min-w-[50rem]">
           <TableHeader>
             <TableRow>
               <SortHead label="ID" k="id" sort={sort} onSort={onSort} />
@@ -113,8 +117,8 @@ export function ApplicationsTab() {
               <SortHead label="Territory" k="territory" sort={sort} onSort={onSort} />
               <SortHead label="Status" k="status" sort={sort} onSort={onSort} />
               <SortHead label="Score" k="score" sort={sort} onSort={onSort} />
-              <SortHead label="Payback" k="payback" sort={sort} onSort={onSort} />
-              <TableHead>Headline</TableHead>
+              <SortHead label="Payback" k="payback" sort={sort} onSort={onSort} className="max-xl:hidden" />
+              <TableHead className="w-10" aria-label="Open" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -130,7 +134,7 @@ export function ApplicationsTab() {
               const pb = paybackOf(d);
               const placed = !!d.allocation;
               return (
-                <TableRow key={d.id} onClick={() => s.openApplicant(d.id)} className="cursor-pointer" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") s.openApplicant(d.id); }}>
+                <TableRow key={d.id} onClick={() => s.openApplicant(d.id)} className="row-link cursor-pointer" title={d.headline} tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") s.openApplicant(d.id); }}>
                   <TableCell className="font-medium whitespace-nowrap">{d.id}</TableCell>
                   <TableCell className="whitespace-nowrap">{d.name ?? <span className="text-muted-foreground">(no name)</span>}</TableCell>
                   <TableCell className="whitespace-nowrap">
@@ -140,8 +144,8 @@ export function ApplicationsTab() {
                   <TableCell className={`whitespace-nowrap ${placed ? "" : "text-muted-foreground"}`}>{territoryOf(d) || "-"}</TableCell>
                   <TableCell><StatusChip status={d.status} /></TableCell>
                   <TableCell><ScoreBar score={d.score} status={d.status} /></TableCell>
-                  <TableCell className="whitespace-nowrap tabular-nums">{pb !== null ? `${pb} mo` : "-"}</TableCell>
-                  <TableCell className="max-w-[26rem] truncate text-muted-foreground" title={d.headline}>{d.headline}</TableCell>
+                  <TableCell className="whitespace-nowrap tabular-nums max-xl:hidden">{pb !== null ? `${pb} mo` : "-"}</TableCell>
+                  <TableCell className="w-10 text-teal-700"><ChevronRight className="row-cue size-4" aria-hidden /></TableCell>
                 </TableRow>
               );
             })}

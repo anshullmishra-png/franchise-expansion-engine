@@ -124,6 +124,184 @@
   }
 }
 
+/* ---- Interaction layer: how the cursor is answered ------------------------------------------------------------
+   Pointer cursor on anything clickable, "not allowed" on anything disabled, "progress" while busy.
+   Buttons lift slightly on hover and press in on click; keyboard focus gets a clear teal ring.
+   Cards lift and glow toward the cursor (the glow position is set by <CursorEffects/>). All of it is switched off
+   for people who prefer reduced motion, and the hover-only effects are skipped on touch screens. */
+:where(button, [role="button"], [role="tab"], [role="menuitem"], a[href], summary, label[for], select, input[type="file"], input[type="checkbox"], [role="switch"]) {
+  cursor: pointer;
+}
+:where(button:disabled, [aria-disabled="true"], [data-disabled]) {
+  cursor: not-allowed;
+}
+:where([aria-busy="true"], [data-busy="true"]) {
+  cursor: progress;
+}
+:where(input[type="text"], input[type="search"], textarea, input:not([type])) {
+  cursor: text;
+}
+:where(button, [role="tab"], a[href], summary, [role="menuitem"]):focus-visible {
+  outline: 2px solid #14b8a6;
+  outline-offset: 2px;
+}
+
+.press {
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.press:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+}
+@media (hover: hover) {
+  .press:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.35);
+  }
+  .press:active:not(:disabled) {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: none;
+  }
+}
+
+/* Cards: lift on hover, with a soft teal glow that follows the cursor. */
+.spotlight {
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease;
+}
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 50%), rgba(20, 184, 166, 0.14), transparent 70%);
+}
+@media (hover: hover) {
+  .spotlight:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 36px -16px rgba(15, 94, 89, 0.4);
+    border-color: rgba(20, 184, 166, 0.45);
+  }
+  .spotlight:hover::before {
+    opacity: 1;
+  }
+}
+.spotlight:active {
+  transform: translateY(0) scale(0.995);
+}
+.spotlight-dark::before {
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(45, 212, 191, 0.16), transparent 70%);
+}
+
+/* A large soft light that follows the cursor across the hero map. */
+.hero-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.75), transparent 65%);
+}
+.hero-surface:hover .hero-glow {
+  opacity: 1;
+}
+
+/* Table rows: a teal edge and a "View" cue appear under the cursor. */
+.row-link {
+  position: relative;
+  transition: background-color 0.15s ease;
+}
+.row-link > td:first-child {
+  box-shadow: inset 0 0 0 transparent;
+  transition: box-shadow 0.15s ease;
+}
+@media (hover: hover) {
+  .row-link:hover {
+    background-color: #f0fdfa;
+  }
+  .row-link:hover > td:first-child {
+    box-shadow: inset 3px 0 0 #0f766e;
+  }
+}
+.row-link:focus-visible {
+  outline: 2px solid #14b8a6;
+  outline-offset: -2px;
+}
+.row-cue {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.row-link:hover .row-cue,
+.row-link:focus-visible .row-cue {
+  opacity: 1;
+  transform: none;
+}
+
+/* Collapsible sections: smooth height without measuring. */
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+.collapse[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+.collapse > div {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Entrance: content fades up once. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise-in {
+  animation: rise-in 0.45s ease both;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Chat slide-over. */
+.slide-over {
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.3s;
+}
+.slide-over[data-open="true"] {
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press,
+  .press:hover:not(:disabled),
+  .press:active:not(:disabled),
+  .spotlight,
+  .spotlight:hover,
+  .spotlight:active,
+  .row-cue,
+  .collapse,
+  .slide-over {
+    transition: none !important;
+    transform: none !important;
+  }
+  .rise-in {
+    animation: none;
+  }
+}
+
 /* Leaflet map: softened tiles to sit on the paper palette, and our own marker shapes (no default image icons). */
 .leaflet-container {
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;

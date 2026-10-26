@@ -130,7 +130,7 @@ function StoreInner({ children }: { children: ReactNode }) {
   const [tab, setTab] = useState<TabKey>("overview");
   const [drawer, setDrawer] = useState<DrawerTarget>(null);
   const [assumptionsOpen, setAssumptionsOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(saved?.chatOpen ?? true);
+  const [chatOpen, setChatOpen] = useState(false); // always starts closed: the chat is a slide-over you open on purpose
   const [statusFilter, setStatusFilter] = useState<Status[]>([]);
   const [readings, setReadings] = useState<NoteReading[] | null>(saved?.readings ?? null);
   const [aiConfigured, setAiConfigured] = useState<boolean | null>(null);

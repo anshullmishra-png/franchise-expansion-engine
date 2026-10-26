@@ -18,7 +18,7 @@ const ALL = "__all__";
 
 function Toggle({ on, onChange, children }: { on: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
   return (
-    <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 shadow-card has-[:checked]:border-teal-700/30 has-[:checked]:bg-teal-50 has-[:checked]:text-teal-800">
+    <label className="press inline-flex cursor-pointer items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 shadow-card has-[:checked]:border-teal-700/30 has-[:checked]:bg-teal-50 has-[:checked]:text-teal-800">
       <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} className="size-3.5 accent-teal-700" />
       {children}
     </label>
@@ -51,8 +51,12 @@ export function MapTab() {
   const approx = [...model.stores, ...model.allocations].some((m) => m.approximate);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4">
+      <div className="rise-in">
+        <h2 className="text-2xl font-extrabold tracking-tight text-ink-900">Map</h2>
+        <p className="mt-1.5 text-[15px] text-ink-600">Existing stores, new allocations, catchments and redirects. Click a coloured marker to open the applicant.</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2.5">
         <label className="inline-flex items-center gap-2 text-xs font-medium text-ink-600">
           <span className="tracky text-[11px] font-bold text-ink-500 uppercase">City</span>
           <select

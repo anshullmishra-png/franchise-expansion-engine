@@ -20,7 +20,7 @@ export function TerritoryCard({ t, highlight }: { t: TerritoryResult; highlight?
 
   return (
     <div ref={ref} id={`territory-${t.id}`}>
-      <Card className={highlight ? "ring-2 ring-brand" : ""}>
+      <Card className={`spotlight rounded-2xl ${highlight ? "ring-2 ring-brand" : ""}`}>
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span>{t.id}</span>
@@ -34,7 +34,7 @@ export function TerritoryCard({ t, highlight }: { t: TerritoryResult; highlight?
             </span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent className="relative space-y-4 text-sm leading-relaxed">
           <div>
             <h4 className="mb-1 text-xs font-semibold tracky text-muted-foreground uppercase">Allocated stores</h4>
             {t.allocated.length === 0 ? (
@@ -116,10 +116,16 @@ export function TerritoriesTab() {
   if (s.result.territories.length === 0)
     return <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No territories in the file, so nobody can be placed. Add rows to the Territories sheet.</div>;
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      {s.result.territories.map((t) => (
-        <TerritoryCard key={t.id} t={t} />
-      ))}
+    <div className="space-y-4">
+      <div className="rise-in">
+        <h2 className="text-2xl font-extrabold tracking-tight text-ink-900">Territories</h2>
+        <p className="mt-1.5 text-[15px] text-ink-600">Who holds each slot, who is waiting, and why a slot may be left empty.</p>
+      </div>
+      <div className="grid gap-6 xl:grid-cols-2">
+        {s.result.territories.map((t) => (
+          <TerritoryCard key={t.id} t={t} />
+        ))}
+      </div>
     </div>
   );
 }
