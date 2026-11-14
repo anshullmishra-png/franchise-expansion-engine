@@ -20,7 +20,7 @@ A brand gets franchise applications for a limited set of territories. Some are i
 
 ## Did it work?
 
-The full test suite runs on every push. A stress suite adds a 34-trap file, 300-workbook rule fuzzing and messy-file checks.
+110 tests run on every push. A separate stress suite adds a 34-trap file, 300-workbook rule fuzzing and messy-file checks.
 
 ## What it doesn't solve
 
