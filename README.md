@@ -1,5 +1,39 @@
 # Franchise Expansion Engine
 
+**Decides which franchise applicant gets which territory, and explains every decision in plain language.**
+
+[![tests](https://github.com/anshullmishra-png/franchise-expansion-engine/actions/workflows/tests.yml/badge.svg)](https://github.com/anshullmishra-png/franchise-expansion-engine/actions/workflows/tests.yml) [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+
+Live demo: coming soon · Built for a Mesa School of Business operations hackathon (Case 1). The brand and its applicants are fictional.
+
+## The problem
+
+A brand gets franchise applications for a limited set of territories. Some are incomplete or contradictory, several want the same pin code, and every applicant needs a clear decision with a reason, next steps and a plan.
+
+## What I decided
+
+- **Rules decide, AI explains.** A deterministic engine applies hard rules and a transparent 100-point score. Gemini only reads messy notes (worth at most ±5 points, with the quoted text shown), rephrases explanations and turns chat into calls to the engine.
+- **It still works when the AI doesn't.** If Gemini is missing, slow or throttled, the app runs in rules-only mode.
+- **Six placement rules are re-checked after every run,** such as never two stores on one pin code and no catchment overlap of 45% or more.
+
+[Why it works this way: the decision log](docs/DECISIONS.md)
+
+## Did it work?
+
+The full test suite runs on every push. A stress suite adds a 34-trap file, 300-workbook rule fuzzing and messy-file checks.
+
+## What it doesn't solve
+
+Distances and catchments are estimates from pin-code centres, not street addresses, and the engine only knows what the applicant file contains.
+
+## Try it
+
+Locally, with no keys or login: `npm install`, `npm run dev`, open http://localhost:3000 and choose **Try with sample data**.
+
+---
+
+*Everything below is the technical detail.*
+
 Upload one Excel file (Applications, Territories, the brand's existing stores). Every applicant gets a decision (Approved, Conditional, Redirect, Waitlist, Hold or Rejected), a plain-language reason, next steps, a store-readiness timeline and a training plan in their language. A chat panel answers "why" questions and takes new information ("APP-012 has now found a ground-floor space"), re-runs everything and reports every knock-on change.
 
 **Rules decide, AI explains.** The engine in `lib/engine` is plain deterministic TypeScript: same file in, same decisions out. Gemini only reads free-text notes into bounded, quoted signals, rephrases explanations and messages, and turns chat into calls to the engine's tools. If Gemini is missing, slow or throttled, everything still works in rules-only mode.
